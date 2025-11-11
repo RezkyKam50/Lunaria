@@ -1,0 +1,2 @@
+set(__QT_DEPLOY_TARGET_Lunaria_FILE /home/rezkykam/Lunaria/build_Lunaria/Lunaria)
+set(__QT_DEPLOY_TARGET_Lunaria_TYPE EXECUTABLE)

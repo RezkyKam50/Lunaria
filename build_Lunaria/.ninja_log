@@ -1,0 +1,8 @@
+# ninja log v7
+1	187	1762869494940005937	Lunaria_autogen/timestamp	cf5c7d5ed27474cd
+1	187	1762869494940005937	Lunaria_autogen/mocs_compilation.cpp	cf5c7d5ed27474cd
+1	187	1762869494940005937	/home/rezkykam/Lunaria/build_Lunaria/Lunaria_autogen/timestamp	cf5c7d5ed27474cd
+1	187	1762869494940005937	/home/rezkykam/Lunaria/build_Lunaria/Lunaria_autogen/mocs_compilation.cpp	cf5c7d5ed27474cd
+190	198	1762869494950506594	CMakeFiles/Lunaria.dir/Lunaria_autogen/mocs_compilation.cpp.o	b32152e1ea8db7d
+190	383	1762869494950697753	CMakeFiles/Lunaria.dir/lunaria.cpp.o	5c2fbaefb4f129a5
+383	586	1762869495143436587	Lunaria	3384955159f86891
