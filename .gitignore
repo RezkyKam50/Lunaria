@@ -1,4 +1,6 @@
 build_*
+*_Lunaria
 Lunaria
 Lunaria.*
-models/*
+*.gguf
+.vscode

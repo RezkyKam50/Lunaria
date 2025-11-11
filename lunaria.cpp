@@ -63,11 +63,9 @@ public slots:
             emit errorOccurred("Model not loaded");
             return;
         }
-        
-        // Get vocab
+         
         const llama_vocab *vocab = llama_model_get_vocab(model);
-        
-        // Tokenize prompt
+         
         std::vector<llama_token> tokens;
         tokens.resize(prompt.length() + 256);
         
@@ -95,32 +93,26 @@ public slots:
         }
         
         tokens.resize(n_tokens);
-        
-        // Create batch for prompt evaluation
+         
         llama_batch batch = llama_batch_get_one(tokens.data(), tokens.size());
-        
-        // Evaluate prompt
+         
         if (llama_decode(ctx, batch) != 0) {
             emit errorOccurred("Failed to evaluate prompt");
             return;
         }
-        
-        // Generate response
+         
         QString response;
         int max_tokens = 512;
         int n_cur = tokens.size();
         int n_ctx = llama_n_ctx(ctx);
         
         for (int i = 0; i < max_tokens; i++) {
-            // Sample next token
             llama_token new_token = llama_sampler_sample(sampler, ctx, -1);
-            
-            // Check for end of generation
+             
             if (llama_vocab_is_eog(vocab, new_token)) {
                 break;
             }
-            
-            // Convert token to text
+             
             char buf[256];
             int n = llama_token_to_piece(vocab, new_token, buf, sizeof(buf), 0, false);
             
@@ -130,20 +122,16 @@ public slots:
             
             QString token_str = QString::fromUtf8(buf, n);
             response += token_str;
-            
-            // Emit partial response for streaming effect
+             
             emit partialResponse(token_str);
-            
-            // Check if we're approaching context limit
+             
             if (n_cur >= n_ctx - 1) {
                 emit errorOccurred("Context limit reached");
                 break;
             }
-            
-            // Accept the sampled token
+             
             llama_sampler_accept(sampler, new_token);
-            
-            // Add token to batch and decode
+             
             batch = llama_batch_get_one(&new_token, 1);
             
             if (llama_decode(ctx, batch) != 0) {
@@ -229,8 +217,7 @@ private:
         
         modelGroup->setLayout(modelLayout);
         mainLayout->addWidget(modelGroup);
-        
-        // Progress bar
+         
         progressBar = new QProgressBar();
         progressBar->setVisible(false);
         mainLayout->addWidget(progressBar);
@@ -315,7 +302,7 @@ private slots:
         }
         
         progressBar->setVisible(true);
-        progressBar->setRange(0, 0);  // Indeterminate progress
+        progressBar->setRange(0, 0);   
         loadButton->setEnabled(false);
         browseButton->setEnabled(false);
         
@@ -343,14 +330,14 @@ private slots:
         }
         
         chatDisplay->append(QString("<b>You:</b> %1").arg(message));
+
         userInput->clear();
         userInput->setEnabled(false);
         sendButton->setEnabled(false);
         
-        // Format prompt for chat (adjust based on your model)
         QString prompt = QString("<|user|>\n%1\n<|assistant|>\n").arg(message);
         
-        chatDisplay->append("<b>AI:</b> ");
+        chatDisplay->append("<b>LLM:</b> ");
         currentResponse.clear();
         
         emit generateResponse(prompt);
@@ -358,8 +345,7 @@ private slots:
     
     void onPartialResponse(const QString &token) {
         currentResponse += token;
-        
-        // Update display with streaming effect
+         
         QTextCursor cursor = chatDisplay->textCursor();
         cursor.movePosition(QTextCursor::End);
         cursor.insertText(token);
@@ -380,8 +366,7 @@ private slots:
         browseButton->setEnabled(true);
         
         chatDisplay->append(QString("<b style='color: red;'>Error:</b> %1").arg(error));
-        
-        // Re-enable input if model was loaded before
+         
         if (worker) {
             userInput->setEnabled(true);
             sendButton->setEnabled(true);

@@ -21,7 +21,7 @@ include_directories(
 )
 
 
-# Find the shared libraries in the bin directory
+# Find shared libraries 
 find_library(LLAMA_LIB 
     NAMES llama libllama
     PATHS 
@@ -47,14 +47,14 @@ find_library(COMMON_LIB
     NO_DEFAULT_PATH
 )
 
-# Debug: Print library paths
+# Check 1
 message(STATUS "LLAMA_CPP_DIR: ${LLAMA_CPP_DIR}")
 message(STATUS "LLAMA_BUILD_DIR: ${LLAMA_BUILD_DIR}")
 message(STATUS "LLAMA_LIB: ${LLAMA_LIB}")
 message(STATUS "GGML_LIB: ${GGML_LIB}")
 message(STATUS "COMMON_LIB: ${COMMON_LIB}")
 
-# Check if libraries were found
+# Check 2
 if(NOT LLAMA_LIB)
     message(FATAL_ERROR "Could not find llama library. Please build llama.cpp first.")
 endif()
@@ -62,13 +62,11 @@ endif()
 if(NOT GGML_LIB)
     message(FATAL_ERROR "Could not find ggml library. Please build llama.cpp first.")
 endif()
-
-# Common library is optional in some builds
+ 
 if(NOT COMMON_LIB)
     message(WARNING "Could not find common library. Will try to link without it.")
 endif()
-
-# Add the executable
+ 
 add_executable(Lunaria lunaria.cpp)
 
 
@@ -91,7 +89,6 @@ else()
     )
 endif()
 
-# Set properties for the target
 target_compile_definitions(Lunaria PRIVATE 
     "$<$<OR:$<CONFIG:Debug>,$<CONFIG:RelWithDebInfo>>:QT_QML_DEBUG>"
 )
