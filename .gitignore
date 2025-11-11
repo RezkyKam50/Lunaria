@@ -1,5 +1,4 @@
-build_*
-*_Lunaria
+build_Lunaria
 Lunaria
 Lunaria.*
 *.gguf
