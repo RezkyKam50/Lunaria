@@ -1,4 +1,4 @@
-/home/rezkykam/Lunaria/build_Lunaria/Lunaria_autogen/include/lunaria.moc: /home/rezkykam/Lunaria/lunaria.cpp \
+/home/rezkykam/Lunaria/build_Lunaria/Lunaria_autogen/include/lunaria.moc: /home/rezkykam/Lunaria/src/lunaria.cpp \
   /home/rezkykam/Lunaria/build_Lunaria/Lunaria_autogen/moc_predefs.h \
   /home/rezkykam/Lunaria/llama.cpp/ggml/include/ggml-alloc.h \
   /home/rezkykam/Lunaria/llama.cpp/ggml/include/ggml-backend.h \

@@ -279,7 +279,7 @@ Lunaria_BINARY_DIR:STATIC=/home/rezkykam/Lunaria/build_Lunaria
 Lunaria_IS_TOP_LEVEL:STATIC=ON
 
 //Value Computed by CMake
-Lunaria_SOURCE_DIR:STATIC=/home/rezkykam/Lunaria
+Lunaria_SOURCE_DIR:STATIC=/home/rezkykam/Lunaria/src
 
 //Path to a file.
 OPENGL_EGL_INCLUDE_DIR:PATH=/usr/include
@@ -455,7 +455,7 @@ CMAKE_GENERATOR_TOOLSET:INTERNAL=
 CMAKE_HAVE_LIBC_PTHREAD:INTERNAL=1
 //Source directory with the top level CMakeLists.txt file for this
 // project
-CMAKE_HOME_DIRECTORY:INTERNAL=/home/rezkykam/Lunaria
+CMAKE_HOME_DIRECTORY:INTERNAL=/home/rezkykam/Lunaria/src
 //ADVANCED property for variable: CMAKE_INSTALL_BINDIR
 CMAKE_INSTALL_BINDIR-ADVANCED:INTERNAL=1
 //ADVANCED property for variable: CMAKE_INSTALL_DATADIR

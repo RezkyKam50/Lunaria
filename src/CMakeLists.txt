@@ -1,27 +1,22 @@
 cmake_minimum_required(VERSION 3.16)
 project(Lunaria)
-
-# Find required Qt6 packages
+ 
 find_package(Qt6 REQUIRED COMPONENTS Core Widgets)
-
-# Set C++ standard
+ 
 set(CMAKE_CXX_STANDARD 17)
 set(CMAKE_CXX_STANDARD_REQUIRED ON)
 set(CMAKE_AUTOMOC ON)
 
-# Path to llama.cpp
-set(LLAMA_CPP_DIR "llama.cpp")
+# GGML path
+set(LLAMA_CPP_DIR "../llama.cpp")
 set(LLAMA_BUILD_DIR "${LLAMA_CPP_DIR}/build_llama")
-
-# Include directories
 include_directories(
     ${LLAMA_CPP_DIR}/include
     ${LLAMA_CPP_DIR}/common
     ${LLAMA_CPP_DIR}/ggml/include
 )
 
-
-# Find shared libraries 
+#* enable BUILD_SHARED_LIBS 
 find_library(LLAMA_LIB 
     NAMES llama libllama
     PATHS 
@@ -68,10 +63,7 @@ if(NOT COMMON_LIB)
 endif()
  
 add_executable(Lunaria lunaria.cpp)
-
-
-
-# Link libraries
+ 
 if(COMMON_LIB)
     target_link_libraries(Lunaria 
         Qt6::Core 

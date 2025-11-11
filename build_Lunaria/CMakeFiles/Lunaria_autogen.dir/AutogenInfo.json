@@ -2,11 +2,11 @@
 	"BUILD_DIR" : "/home/rezkykam/Lunaria/build_Lunaria/Lunaria_autogen",
 	"CMAKE_BINARY_DIR" : "/home/rezkykam/Lunaria/build_Lunaria",
 	"CMAKE_CURRENT_BINARY_DIR" : "/home/rezkykam/Lunaria/build_Lunaria",
-	"CMAKE_CURRENT_SOURCE_DIR" : "/home/rezkykam/Lunaria",
+	"CMAKE_CURRENT_SOURCE_DIR" : "/home/rezkykam/Lunaria/src",
 	"CMAKE_EXECUTABLE" : "/usr/bin/cmake",
 	"CMAKE_LIST_FILES" : 
 	[
-		"/home/rezkykam/Lunaria/CMakeLists.txt",
+		"/home/rezkykam/Lunaria/src/CMakeLists.txt",
 		"/usr/share/cmake/Modules/CMakeDetermineSystem.cmake",
 		"/usr/share/cmake/Modules/CMakeSystem.cmake.in",
 		"/home/rezkykam/Lunaria/build_Lunaria/CMakeFiles/3.31.6/CMakeSystem.cmake",
@@ -559,7 +559,7 @@
 		"/usr/lib64/cmake/Qt6Widgets/Qt6WidgetsPlugins.cmake",
 		"/usr/lib64/cmake/Qt6Widgets/Qt6WidgetsVersionlessAliasTargets.cmake"
 	],
-	"CMAKE_SOURCE_DIR" : "/home/rezkykam/Lunaria",
+	"CMAKE_SOURCE_DIR" : "/home/rezkykam/Lunaria/src",
 	"CROSS_CONFIG" : false,
 	"DEP_FILE" : "/home/rezkykam/Lunaria/build_Lunaria/Lunaria_autogen/deps",
 	"DEP_FILE_RULE_NAME" : "Lunaria_autogen/timestamp",
@@ -625,7 +625,7 @@
 	"SETTINGS_FILE" : "/home/rezkykam/Lunaria/build_Lunaria/CMakeFiles/Lunaria_autogen.dir/AutogenUsed.txt",
 	"SOURCES" : 
 	[
-		[ "/home/rezkykam/Lunaria/lunaria.cpp", "Mu", null ]
+		[ "/home/rezkykam/Lunaria/src/lunaria.cpp", "Mu", null ]
 	],
 	"USE_BETTER_GRAPH" : true,
 	"VERBOSITY" : 0

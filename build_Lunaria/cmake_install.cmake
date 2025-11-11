@@ -1,4 +1,4 @@
-# Install script for directory: /home/rezkykam/Lunaria
+# Install script for directory: /home/rezkykam/Lunaria/src
 
 # Set the install prefix
 if(NOT DEFINED CMAKE_INSTALL_PREFIX)
