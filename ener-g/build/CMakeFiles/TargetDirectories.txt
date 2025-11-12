@@ -1,0 +1,5 @@
+/home/rezkykam/Lunaria/ener-g/build/CMakeFiles/EnergyMonitor.dir
+/home/rezkykam/Lunaria/ener-g/build/CMakeFiles/edit_cache.dir
+/home/rezkykam/Lunaria/ener-g/build/CMakeFiles/rebuild_cache.dir
+/home/rezkykam/Lunaria/ener-g/build/CMakeFiles/EnergyMonitor_autogen_timestamp_deps.dir
+/home/rezkykam/Lunaria/ener-g/build/CMakeFiles/EnergyMonitor_autogen.dir

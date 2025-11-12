@@ -8,7 +8,7 @@ LlamaWorker::~LlamaWorker() {
     cleanup();
 }
 
-void LlamaWorker::loadModel(const QString &modelPath) {
+void LlamaWorker::loadModel(const QString &modelPath, const ContextSettings &settings) {
     cleanup();
      
     llama_backend_init();
@@ -23,9 +23,9 @@ void LlamaWorker::loadModel(const QString &modelPath) {
     }
      
     llama_context_params ctx_params = llama_context_default_params();
-    ctx_params.n_ctx        = 2048;   
-    ctx_params.n_threads    = 8;   
-    ctx_params.n_batch      = 512;
+    ctx_params.n_ctx        = settings.contextSize;
+    ctx_params.n_threads    = settings.threadCount;
+    ctx_params.n_batch      = settings.batchSize;
     ctx_params.kv_unified   = true;
      
     ctx = llama_init_from_model(model, ctx_params);
@@ -35,6 +35,7 @@ void LlamaWorker::loadModel(const QString &modelPath) {
         return;
     }
      
+    // Initialize with default sampler (will be updated on generation)
     llama_sampler_chain_params sampler_params = llama_sampler_chain_default_params();
     sampler = llama_sampler_chain_init(sampler_params);
     llama_sampler_chain_add(sampler, llama_sampler_init_greedy());
@@ -42,11 +43,44 @@ void LlamaWorker::loadModel(const QString &modelPath) {
     emit modelLoaded();
 }
 
-void LlamaWorker::generateResponse(const QString &prompt) {
+void LlamaWorker::updateSampler(const GenerationSettings &settings) {
+    if (sampler) {
+        llama_sampler_free(sampler);
+    }
+    
+    llama_sampler_chain_params sampler_params = llama_sampler_chain_default_params();
+    sampler = llama_sampler_chain_init(sampler_params);
+    
+    // Add sampling parameters based on settings
+    if (settings.temperature > 0.0) {
+        llama_sampler_chain_add(sampler, 
+            llama_sampler_init_temp(settings.temperature));
+        
+        if (settings.topK > 0) {
+            llama_sampler_chain_add(sampler, 
+                llama_sampler_init_top_k(settings.topK));
+        }
+        
+        if (settings.topP < 1.0) {
+            llama_sampler_chain_add(sampler, 
+                llama_sampler_init_top_p(settings.topP, 1));
+        }
+        
+        llama_sampler_chain_add(sampler, llama_sampler_init_dist(0));
+    } else {
+        // Use greedy sampling if temperature is 0
+        llama_sampler_chain_add(sampler, llama_sampler_init_greedy());
+    }
+}
+
+void LlamaWorker::generateResponse(const QString &prompt, const GenerationSettings &settings) {
     if (!ctx || !model) {
         emit errorOccurred("Model not loaded");
         return;
     }
+    
+    // Update sampler with current settings
+    updateSampler(settings);
      
     const llama_vocab *vocab = llama_model_get_vocab(model);
      
@@ -87,7 +121,7 @@ void LlamaWorker::generateResponse(const QString &prompt) {
      
     QString response;
     
-    int max_tokens      = 512;
+    int max_tokens      = settings.maxTokens;
     int n_cur           = tokens.size();
     int n_ctx           = llama_n_ctx(ctx);
     

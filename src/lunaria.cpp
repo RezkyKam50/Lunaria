@@ -11,99 +11,373 @@
 #include <QFileDialog>
 #include <QProgressBar>
 #include <QGroupBox>
-#include "llamaworker.h"
+#include <QSplitter>
+#include <QMenuBar>
+#include <QMainWindow>
+#include <QSettings>
+#include <QElapsedTimer>
 
-class ChatWindow : public QWidget
+#include <QAudioSource>
+#include <QAudioFormat>
+#include <QBuffer>
+#include <QMediaDevices>
+
+#include "llamaworker.h"
+#include "whisperworker.h"
+#include "settingsdialog.h"
+ 
+
+
+class ChatWindow : public QMainWindow
 {
     Q_OBJECT
 
+private:
+    struct Constants {
+        static constexpr int DEFAULT_WINDOW_WIDTH   = 1200;
+        static constexpr int DEFAULT_WINDOW_HEIGHT  = 600;
+
+        static constexpr int LEFT_PANEL_MAX_WIDTH   = 350;
+        static constexpr int LEFT_PANEL_MIN_WIDTH   = 300;
+
+        static constexpr int SAMPLE_RATE            = 16000;
+        static constexpr int AUDIO_CHANNELS         = 1;
+    };
+    
+    struct Defaults {
+        static inline const QString SYSTEM_PROMPT           =   "You are a helpful AI assistant.";
+        static inline const GenerationSettings GENERATION   = {
+                                                                /*maxTokens=*/      512,
+                                                                /*temperature=*/    0.3,
+                                                                /*topP=*/           0.95,
+                                                                /*topK=*/           10
+        };
+        static inline const ContextSettings CONTEXT         = {
+                                                                /*contextSize=*/    2048,
+                                                                /*threadCount=*/    8,
+                                                                /*batchSize=*/      512
+        };
+    };
+    
+    struct Styles {
+ 
+        static inline const QString COLOR_GRAY          = "gray";
+        static inline const QString COLOR_ORANGE        = "orange";
+        static inline const QString COLOR_GREEN         = "green";
+        static inline const QString COLOR_RED           = "red";
+        static inline const QString COLOR_CYAN          = "cyan";
+        static inline const QString COLOR_WHITE         = "white";
+         
+        static inline const QString STATUS_DEFAULT      = "color: gray;";
+        static inline const QString STATUS_LOADING      = "color: orange;";
+        static inline const QString STATUS_READY        = "color: #90EE90;";  
+        static inline const QString STATUS_ERROR        = "color: red;";
+        static inline const QString STATUS_RECORDING    = "color: red;";
+         
+        static inline const QString BUTTON_RECORDING    = "background-color: #ff4444; color: white;";
+        static inline const QString BUTTON_NORMAL       = "";
+         
+        static inline const QString CHAT_SYSTEM         = "color: gray;";
+        static inline const QString CHAT_SUCCESS        = "color: green;";
+        static inline const QString CHAT_ERROR          = "color: red;";
+        static inline const QString CHAT_INFO           = "color: cyan;";
+        static inline const QString CHAT_ITALIC         = "font-style: italic;";
+         
+        static inline const QString HTML_SYSTEM         = "<i style='color: gray;'>%1</i>";
+        static inline const QString HTML_SUCCESS        = "<i style='color: green;'>%1</i>";
+        static inline const QString HTML_ERROR          = "<b style='color: red;'>Error:</b> %1";
+        static inline const QString HTML_INFO           = "<i style='color: cyan;'>%1</i>";
+        static inline const QString HTML_LOADING        = "<i>%1</i>";
+        static inline const QString HTML_USER           = "<b>You:</b> %1";
+        static inline const QString HTML_LLM            = "<b>LLM:</b> ";
+        static inline const QString HTML_TRANSCRIBED    = "<i>Transcribed: %1</i>";
+    };
+    
 public:
-    ChatWindow(QWidget *parent = nullptr) : QWidget(parent)
+    ChatWindow(QWidget *parent = nullptr) : QMainWindow(parent)
+
+    // Default settings else modified settings.
+
+        , systemPrompt          (Defaults::SYSTEM_PROMPT)
+        , generationSettings    (Defaults::GENERATION)
+        , contextSettings       (Defaults::CONTEXT)
+        , modelPathEdit         (nullptr)
+        , userInput             (nullptr)
+        , chatDisplay           (nullptr)
+        , browseButton          (nullptr)
+        , loadButton            (nullptr)
+        , sendButton            (nullptr)
+        , clearButton           (nullptr)
+        , progressBar           (nullptr)
+        , llmStatusLabel        (nullptr)
+        , whisperPathEdit       (nullptr)
+        , whisperBrowseButton   (nullptr)
+        , whisperLoadButton     (nullptr)
+        , recordButton          (nullptr)
+        , whisperStatusLabel    (nullptr)
+        , whisperProgressBar    (nullptr)
+        , worker                (nullptr)
+        , whisperWorker         (nullptr)
+        , audioInput            (nullptr)
+        , audioBuffer           (nullptr)
+        , isRecording           (false)
+        , savedModelPath        ("")
+        , savedWhisperPath      ("")
+        , conversationHistory   ("")
+        , currentResponse       ("")
+        
     {
         setWindowTitle("Lunaria");
-        setMinimumSize(600, 500);
+        setMinimumSize(Constants::DEFAULT_WINDOW_WIDTH, Constants::DEFAULT_WINDOW_HEIGHT);
+         
+        loadSavedSettings();
+        createMenuBar();
+         
+        QWidget *centralWidget = new QWidget();
+        setCentralWidget(centralWidget);
+         
+        auto *mainLayout = new QHBoxLayout(centralWidget);
         
-        auto *mainLayout = new QVBoxLayout(this);
+        QSplitter *splitter = new QSplitter(Qt::Horizontal);
+         
+        QWidget *leftPanel = new QWidget();
+        auto *leftLayout = new QVBoxLayout(leftPanel);
+        leftLayout->setContentsMargins(0, 0, 0, 0);
         
-        createModelSection(mainLayout);
-        createChatSection(mainLayout);
-        createInputSection(mainLayout);
+        createModelSection(leftLayout);
+        createWhisperSection(leftLayout);
+        leftLayout->addStretch();  
+        
+        leftPanel->setMaximumWidth(Constants::LEFT_PANEL_MAX_WIDTH);
+        leftPanel->setMinimumWidth(Constants::LEFT_PANEL_MIN_WIDTH);
+         
+        QWidget *rightPanel = new QWidget();
+        auto *rightLayout = new QVBoxLayout(rightPanel);
+        rightLayout->setContentsMargins(0, 0, 0, 0);
+        
+        createChatSection(rightLayout);
+        createInputSection(rightLayout);
+        
+        splitter->addWidget(leftPanel);
+        splitter->addWidget(rightPanel);
+        splitter->setStretchFactor(0, 0); 
+        splitter->setStretchFactor(1, 1); 
+        
+        mainLayout->addWidget(splitter);
         
         setupWorker();
+        setupWhisperWorker();
+
+        if (!savedModelPath.isEmpty()) {
+            modelPathEdit->setText(savedModelPath);
+            loadButton->setEnabled(true);
+        }
+        
+        if (!savedWhisperPath.isEmpty()) {
+            whisperPathEdit->setText(savedWhisperPath);
+            whisperLoadButton->setEnabled(true);
+        }
     }
+
     
     ~ChatWindow() {
+
+        saveSettings();  
+
         workerThread.quit();
         workerThread.wait();
+        whisperThread.quit();
+        whisperThread.wait();
+        
+        if (audioInput) {
+            audioInput->stop();
+            delete audioInput;
+        }
     }
 
 private:
-    void createModelSection(QVBoxLayout *mainLayout) {
-
-        auto *modelGroup    = new QGroupBox("Model Settings");
-        auto *modelLayout   = new QHBoxLayout();
+    void createMenuBar() {
+        QMenuBar *menuBar = new QMenuBar();
+        setMenuBar(menuBar);
         
+        QMenu *fileMenu = menuBar->addMenu("&File");
+        
+        QAction *settingsAction = new QAction("&Generation Settings", this);
+        settingsAction->setShortcut(QKeySequence("Ctrl+,"));
+        connect(settingsAction, &QAction::triggered, this, &ChatWindow::onSettingsClicked);
+        fileMenu->addAction(settingsAction);
+        
+        fileMenu->addSeparator();
+        
+        QAction *exitAction = new QAction("E&xit", this);
+        exitAction->setShortcut(QKeySequence("Ctrl+Q"));
+        connect(exitAction, &QAction::triggered, this, &QWidget::close);
+        fileMenu->addAction(exitAction);
+
+        QMenu *helpMenu = menuBar->addMenu("&Help");
+        
+        QAction *aboutAction = new QAction("&About", this);
+        connect(aboutAction, &QAction::triggered, this, &ChatWindow::onAboutClicked);
+        helpMenu->addAction(aboutAction);
+    }
+
+    void loadSavedSettings() {
+        QSettings settings              ("Lunaria", "Lunaria");
+        
+        savedModelPath                  = settings.value("model/lastPath", "").toString();
+        savedWhisperPath                = settings.value("whisper/lastPath", "").toString();
+         
+        systemPrompt                    = settings.value("generation/systemPrompt", "You are a helpful AI assistant.").toString();
+        generationSettings.maxTokens    = settings.value("generation/maxTokens", 512).toInt();
+        generationSettings.temperature  = settings.value("generation/temperature", 0.3).toDouble();
+        generationSettings.topP         = settings.value("generation/topP", 0.95).toDouble();
+        generationSettings.topK         = settings.value("generation/topK", 10).toInt();
+        
+        contextSettings.contextSize     = settings.value("context/size", 2048).toInt();
+        contextSettings.threadCount     = settings.value("context/threads", 8).toInt();
+        contextSettings.batchSize       = settings.value("context/batchSize", 512).toInt();
+    }
+    
+    void saveSettings() {
+        QSettings settings              ("Lunaria", "Lunaria");
+        
+        settings.setValue               ("model/lastPath",         modelPathEdit->text());
+        settings.setValue               ("whisper/lastPath",       whisperPathEdit->text());
+         
+        settings.setValue               ("generation/systemPrompt",systemPrompt);
+        settings.setValue               ("generation/maxTokens",   generationSettings.maxTokens);
+        settings.setValue               ("generation/temperature", generationSettings.temperature);
+        settings.setValue               ("generation/topP",        generationSettings.topP);
+        settings.setValue               ("generation/topK",        generationSettings.topK);
+        
+        settings.setValue               ("context/size",           contextSettings.contextSize);
+        settings.setValue               ("context/threads",        contextSettings.threadCount);
+        settings.setValue               ("context/batchSize",      contextSettings.batchSize);
+    }
+
+
+    void createModelSection(QVBoxLayout *layout) {
+        auto *modelGroup    = new QGroupBox ("LLM Settings");
+        auto *modelLayout   = new QVBoxLayout();
+         
         modelPathEdit       = new QLineEdit();
-        modelPathEdit   ->setPlaceholderText("Path to GGUF model file");
-        modelPathEdit   ->setReadOnly(true);
+        modelPathEdit->setPlaceholderText("Model path...");
+        modelPathEdit->setReadOnly(true);
         
         browseButton        = new QPushButton("Browse");
         loadButton          = new QPushButton("Load Model");
-
-        loadButton      ->setEnabled(false);
+        loadButton->setEnabled(false);
         
-        modelLayout     ->addWidget(new QLabel("Model:"));
-        modelLayout     ->addWidget(modelPathEdit);
-        modelLayout     ->addWidget(browseButton);
-        modelLayout     ->addWidget(loadButton);
-        
-        modelGroup      ->setLayout(modelLayout);
-        mainLayout      ->addWidget(modelGroup);
+        auto *btnLayout     = new QHBoxLayout();
+        btnLayout->addWidget(browseButton);
+        btnLayout->addWidget(loadButton);
          
+        llmStatusLabel      = new QLabel("Status: Not Loaded");
+        llmStatusLabel->setStyleSheet(Styles::STATUS_DEFAULT);
+        
+        modelLayout->addWidget(new QLabel("Model:"));
+        modelLayout->addWidget(modelPathEdit);
+        modelLayout->addLayout(btnLayout);
+        modelLayout->addWidget(llmStatusLabel);
+        
         progressBar         = new QProgressBar();
-        progressBar     ->setVisible(false);
-        mainLayout      ->addWidget(progressBar);
-
+        progressBar->setVisible(false);
+        modelLayout->addWidget(progressBar);
+        
+        modelGroup->setLayout(modelLayout);
+        layout->addWidget(modelGroup);
     }
     
-    void createChatSection(QVBoxLayout *mainLayout) {
+    void createWhisperSection(QVBoxLayout *layout) {
+        auto *whisperGroup  = new QGroupBox("Whisper Settings");
+        auto *whisperLayout = new QVBoxLayout();
+ 
+        whisperPathEdit     = new QLineEdit();
+        whisperPathEdit->setPlaceholderText("Whisper model path...");
+        whisperPathEdit->setReadOnly(true);
 
+        whisperBrowseButton = new QPushButton("Browse");
+        whisperLoadButton   = new QPushButton("Load Whisper");
+        whisperLoadButton->setEnabled(false);
+
+        auto *btnLayout     = new QHBoxLayout();
+        btnLayout->addWidget(whisperBrowseButton);
+        btnLayout->addWidget(whisperLoadButton);
+ 
+        recordButton        = new QPushButton("Record Audio");
+        recordButton->setEnabled(false);
+ 
+        whisperStatusLabel  = new QLabel("Status: Not Loaded");
+        whisperStatusLabel->setStyleSheet(Styles::STATUS_DEFAULT);
+        
+        whisperLayout->addWidget(new QLabel("Model:"));
+        whisperLayout->addWidget(whisperPathEdit);
+        whisperLayout->addLayout(btnLayout);
+        whisperLayout->addWidget(recordButton);
+        whisperLayout->addWidget(whisperStatusLabel);
+
+        whisperProgressBar  = new QProgressBar();
+        whisperProgressBar->setVisible(false);
+        whisperLayout->addWidget(whisperProgressBar);
+
+        whisperGroup->setLayout(whisperLayout);
+        layout->addWidget(whisperGroup);
+    }
+    
+    void createChatSection(QVBoxLayout *layout) {
         auto *chatGroup     = new QGroupBox("Chat");
         auto *chatLayout    = new QVBoxLayout();
         
         chatDisplay         = new QTextEdit();
-        chatDisplay     ->setReadOnly(true);
-        chatDisplay     ->setMinimumHeight(300);
+        chatDisplay->setReadOnly(true);
         
-        chatLayout      ->addWidget(chatDisplay);
-        chatGroup       ->setLayout(chatLayout);
-        mainLayout      ->addWidget(chatGroup);
-
+        chatLayout->addWidget(chatDisplay);
+        chatGroup->setLayout(chatLayout);
+        layout->addWidget(chatGroup);
     }
     
-    void createInputSection(QVBoxLayout *mainLayout) {
-
+    void createInputSection(QVBoxLayout *layout) {
         auto *inputLayout   = new QHBoxLayout();
         
         userInput           = new QLineEdit();
-        userInput       ->setPlaceholderText("Type your message...");
-        userInput       ->setEnabled(false);
+        userInput->setPlaceholderText("Type your message or use voice input...");
+        userInput->setEnabled(false);
         
         sendButton          = new QPushButton("Send");
-        sendButton      ->setEnabled(false);
+        sendButton->setEnabled(false);
         
         clearButton         = new QPushButton("Clear Chat");
         
-        inputLayout     ->addWidget(userInput);
-        inputLayout     ->addWidget(sendButton);
-        inputLayout     ->addWidget(clearButton);
+        inputLayout->addWidget(userInput);
+        inputLayout->addWidget(sendButton);
+        inputLayout->addWidget(clearButton);
         
-        mainLayout      ->addLayout(inputLayout);
-
+        layout->addLayout(inputLayout);
+    }
+    
+    void setStatus(QLabel *statusLabel, const QString &text, const QString &style) {
+        statusLabel->setText(QString("Status: %1").arg(text));
+        statusLabel->setStyleSheet(style);
+    }
+    
+    void setStatusWithColor(QLabel *statusLabel, const QString &text, const QString &color) {
+        statusLabel->setText(QString("Status: %1").arg(text));
+        statusLabel->setStyleSheet(QString("color: %1;").arg(color));
+    }
+     
+    void setProgressBarVisible(QProgressBar *progressBar, bool visible, bool indeterminate = true) {
+        if (visible && indeterminate) {
+            progressBar->setRange(0, 0);   
+        }
+        progressBar->setVisible(visible);
+    }
+     
+    void setModelControlsEnabled(QPushButton *browseBtn, QPushButton *loadBtn, bool enabled) {
+        browseBtn->setEnabled(enabled);
+        loadBtn->setEnabled(enabled);
     }
     
     void setupWorker() {
-
         worker = new LlamaWorker();
         worker->moveToThread(&workerThread);
         
@@ -112,7 +386,7 @@ private:
         connect(browseButton,   &QPushButton::clicked,          this, &ChatWindow::onBrowseClicked);
         connect(loadButton,     &QPushButton::clicked,          this, &ChatWindow::onLoadModelClicked);
         connect(sendButton,     &QPushButton::clicked,          this, &ChatWindow::onSendClicked);
-        connect(clearButton,    &QPushButton::clicked,          chatDisplay, &QTextEdit::clear);
+        connect(clearButton,    &QPushButton::clicked,          this, &ChatWindow::onClearChatClicked);
         connect(userInput,      &QLineEdit::returnPressed,      this, &ChatWindow::onSendClicked);
         
         connect(this,           &ChatWindow::loadModel,         worker, &LlamaWorker::loadModel);
@@ -124,133 +398,374 @@ private:
         connect(worker,         &LlamaWorker::errorOccurred,    this, &ChatWindow::onError);
         
         workerThread.start();
-
+    }
+    
+    void setupWhisperWorker() {
+        whisperWorker = new WhisperWorker();
+        whisperWorker->moveToThread(&whisperThread);
+        
+        connect(&whisperThread,     &QThread::finished, whisperWorker, &QObject::deleteLater);
+        
+        connect(whisperBrowseButton, &QPushButton::clicked,             this, &ChatWindow::onWhisperBrowseClicked);
+        connect(whisperLoadButton,   &QPushButton::clicked,             this, &ChatWindow::onWhisperLoadClicked);
+        connect(recordButton,        &QPushButton::clicked,             this, &ChatWindow::onRecordClicked);
+        
+        connect(this,               &ChatWindow::loadWhisperModel,      whisperWorker, &WhisperWorker::loadModel);
+        connect(this,               &ChatWindow::transcribeAudio,       whisperWorker, &WhisperWorker::transcribe);
+        
+        connect(whisperWorker,      &WhisperWorker::modelLoaded,        this, &ChatWindow::onWhisperModelLoaded);
+        connect(whisperWorker,      &WhisperWorker::transcriptionReady, this, &ChatWindow::onTranscriptionReady);
+        connect(whisperWorker,      &WhisperWorker::errorOccurred,      this, &ChatWindow::onWhisperError);
+        
+        whisperThread.start();
+    }
+    
+    void setupAudioInput() {
+        QAudioFormat format;
+        format.setSampleRate(Constants::SAMPLE_RATE);
+        format.setChannelCount(1);
+        format.setSampleFormat(QAudioFormat::Float);
+        
+        audioInput = new QAudioSource(QMediaDevices::defaultAudioInput(), format, this);
+        audioBuffer = new QBuffer(&audioData, this);
     }
 
 private slots:
     void onBrowseClicked() {
-
         QString fileName = QFileDialog::getOpenFileName(
             this,
             "Select GGUF Model",
-            QDir::homePath(),
+            // Start from last used directory or home
+            savedModelPath.isEmpty() ? QDir::homePath() : QFileInfo(savedModelPath).absolutePath(),
             "GGUF Models (*.gguf);;All Files (*)"
         );
         if (!fileName.isEmpty()) {
             modelPathEdit->setText(fileName);
             loadButton->setEnabled(true);
+            savedModelPath = fileName;
+            saveSettings();  
         }
-
+    }
+    
+    void onWhisperBrowseClicked() {
+        QString fileName = QFileDialog::getOpenFileName(
+            this,
+            "Select Whisper Model",
+            savedWhisperPath.isEmpty() ? QDir::homePath() : QFileInfo(savedWhisperPath).absolutePath(),
+            "Whisper Models (*.bin);;All Files (*)"
+        );
+        if (!fileName.isEmpty()) {
+            whisperPathEdit->setText(fileName);
+            whisperLoadButton->setEnabled(true);
+            savedWhisperPath = fileName;
+            saveSettings();  
+        }
     }
     
     void onLoadModelClicked() {
-
         QString modelPath = modelPathEdit->text();
         
         if (modelPath.isEmpty()) {
             QMessageBox::warning(this, "Error", "Please select a model file");
             return;
         }
+         
+        modelLoadTimer.start();
         
-        progressBar     ->setVisible(true);
-        progressBar     ->setRange(0, 0);   
-        loadButton      ->setEnabled(false);
-        browseButton    ->setEnabled(false);
+        setProgressBarVisible(progressBar, true);
+        setModelControlsEnabled(browseButton, loadButton, false);
+        setStatus(llmStatusLabel, "Loading...", Styles::STATUS_LOADING);
         
-        chatDisplay->append("<b>Loading model...</b>");
+        chatDisplay->append(Styles::HTML_LOADING.arg("Loading model..."));
         
-        emit loadModel(modelPath);
+        emit loadModel(modelPath, contextSettings);
+    }
 
+    void onWhisperLoadClicked() {
+        QString modelPath = whisperPathEdit->text();
+        
+        if (modelPath.isEmpty()) {
+            QMessageBox::warning(this, "Error", "Please select a Whisper model file");
+            return;
+        }
+         
+        whisperLoadTimer.start();
+        
+        setProgressBarVisible(whisperProgressBar, true);
+        setModelControlsEnabled(whisperBrowseButton, whisperLoadButton, false);
+        setStatus(whisperStatusLabel, "Loading...", Styles::STATUS_LOADING);
+
+        chatDisplay->append(Styles::HTML_LOADING.arg("Loading model..."));
+        
+        emit loadWhisperModel(modelPath);
+    }
+        
+    void onModelLoaded() {
+        qint64 loadTimeMs = modelLoadTimer.elapsed();
+        
+        setProgressBarVisible(progressBar, false);
+        setModelControlsEnabled(browseButton, loadButton, true);
+        setStatus(llmStatusLabel, "Ready", Styles::STATUS_READY);
+        
+        userInput->setEnabled(true);
+        sendButton->setEnabled(true);
+        
+        chatDisplay->append(Styles::HTML_SUCCESS.arg("Success."));
+        chatDisplay->append(Styles::HTML_SYSTEM.arg(QString("Model loaded in %1 ms").arg(loadTimeMs)));
+        chatDisplay->append(Styles::HTML_LOADING.arg("You can now start chatting.") + "\n");
+        
+        conversationHistory.clear();
+    }
+
+    void onWhisperModelLoaded() {
+        qint64 loadTimeMs = whisperLoadTimer.elapsed();
+        
+        setProgressBarVisible(whisperProgressBar, false);
+        setModelControlsEnabled(whisperBrowseButton, whisperLoadButton, true);
+        setStatus(whisperStatusLabel, "Ready", Styles::STATUS_READY);
+        
+        recordButton->setEnabled(true);
+
+        chatDisplay->append(Styles::HTML_SUCCESS.arg("Success."));
+ 
+        chatDisplay->append(Styles::HTML_SYSTEM.arg(QString("Whisper model loaded in %1 ms").arg(loadTimeMs)));
+        
+        chatDisplay->append(Styles::HTML_LOADING.arg("You can now start talking by pressing 'Record Audio'.") + "\n");
+
+        setupAudioInput();
     }
     
-    void onModelLoaded() {
-
-        progressBar     ->setVisible(false);
-        loadButton      ->setEnabled(true);
-        browseButton    ->setEnabled(true);
-        userInput       ->setEnabled(true);
-        sendButton      ->setEnabled(true);
-        
-        chatDisplay     ->append("<b style='color: green;'>Model loaded successfully!</b>");
-        chatDisplay     ->append("<i>You can now start chatting.</i>\n");
-
+    void onRecordClicked() {
+        if (!isRecording) {
+            audioData.clear();
+            audioBuffer->open(QIODevice::WriteOnly);
+            audioInput->start(audioBuffer);
+            
+            recordButton->setText("Stop Recording");
+            recordButton->setStyleSheet(Styles::BUTTON_RECORDING);
+            setStatus(whisperStatusLabel, "Recording...", Styles::STATUS_RECORDING);
+            isRecording = true;
+        } else {
+ 
+            audioInput->stop();
+            audioBuffer->close();
+            
+            recordButton->setText("Record Audio");
+            recordButton->setStyleSheet(Styles::BUTTON_NORMAL);
+            setStatus(whisperStatusLabel, "Transcribing...", Styles::STATUS_LOADING);
+            isRecording = false;
+             
+            QByteArray data = audioData;
+            std::vector<float> audioFloats;
+            audioFloats.resize(data.size() / sizeof(float));
+            memcpy(audioFloats.data(), data.data(), data.size());
+            
+            emit transcribeAudio(audioFloats);
+        }
     }
     
     void onSendClicked() {
-
         QString message = userInput->text().trimmed();
         
         if (message.isEmpty()) {
             return;
         }
         
-        chatDisplay     ->append(QString("<b>You:</b> %1").arg(message));
-
-        userInput       ->clear();
-        userInput       ->setEnabled(false);
-        sendButton      ->setEnabled(false);
+        chatDisplay->append(Styles::HTML_USER.arg(message));
+        userInput->clear();
+        userInput->setEnabled(false);
+        sendButton->setEnabled(false);
+        setStatus(llmStatusLabel, "Generating...", Styles::STATUS_LOADING);
+         
+        QString fullPrompt;
+         
+        if (conversationHistory.isEmpty() && !systemPrompt.isEmpty()) {
+            fullPrompt += QString("<|system|>\n%1\n").arg(systemPrompt);
+        }
+         
+        fullPrompt += conversationHistory;
+         
+        fullPrompt += QString("<|user|>\n%1\n<|assistant|>\n").arg(message);
         
-        QString prompt = QString("<|user|>\n%1\n<|assistant|>\n").arg(message);
-        
-        chatDisplay     ->append("<b>LLM:</b> ");
+        chatDisplay->append(Styles::HTML_LLM);
         currentResponse.clear();
         
-        emit generateResponse(prompt);
-
+        emit generateResponse(fullPrompt, generationSettings);
     }
     
     void onPartialResponse(const QString &token) {
-
         currentResponse += token;
          
         QTextCursor cursor = chatDisplay->textCursor();
         cursor.movePosition(QTextCursor::End);
         cursor.insertText(token);
-        chatDisplay     ->setTextCursor(cursor);
-        chatDisplay     ->ensureCursorVisible();
-
+        chatDisplay->setTextCursor(cursor);
+        chatDisplay->ensureCursorVisible();
     }
     
     void onResponseGenerated(const QString &response) {
+        chatDisplay->append("\n");
+         
+        conversationHistory += QString("<|user|>\n%1\n<|assistant|>\n%2\n")
+            .arg(userInput->text().trimmed())
+            .arg(currentResponse);
+        
+        userInput->setEnabled(true);
+        sendButton->setEnabled(true);
+        setStatus(llmStatusLabel, "Ready", Styles::STATUS_READY);
+        userInput->setFocus();
+    }
+    
+    void onTranscriptionReady(const QString &text) {
+        setStatus(whisperStatusLabel, "Ready", Styles::STATUS_READY);
+        
+        if (!text.isEmpty()) {
+            userInput->setText(text);
+            chatDisplay->append(Styles::HTML_TRANSCRIBED.arg(text));
+        } else {
+            QMessageBox::information(this, "Transcription", "No speech detected in the recording.");
+        }
+    }
+    
+    void onClearChatClicked() {
+        chatDisplay->clear();
+        conversationHistory.clear();
+        chatDisplay->append(Styles::HTML_LOADING.arg("Chat history cleared. Starting fresh conversation.") + "\n");
+    }
+    
+    void onSettingsClicked() {
+        SettingsDialog dialog(this);
+         
+        dialog.setSystemPrompt(systemPrompt);
+        dialog.setMaxTokens(generationSettings.maxTokens);
+        dialog.setContextSize(contextSettings.contextSize);
+        dialog.setThreadCount(contextSettings.threadCount);
+        dialog.setBatchSize(contextSettings.batchSize);
+        dialog.setTemperature(generationSettings.temperature);
+        dialog.setTopP(generationSettings.topP);
+        dialog.setTopK(generationSettings.topK);
+        
+        if (dialog.exec() == QDialog::Accepted) {
 
-        chatDisplay     ->append("\n");
-        userInput       ->setEnabled(true);
-        sendButton      ->setEnabled(true);
-        userInput       ->setFocus();
+            systemPrompt = dialog.getSystemPrompt();
+            generationSettings.maxTokens = dialog.getMaxTokens();
+            generationSettings.temperature = dialog.getTemperature();
+            generationSettings.topP = dialog.getTopP();
+            generationSettings.topK = dialog.getTopK();
+            
+            ContextSettings newContextSettings;
+            newContextSettings.contextSize = dialog.getContextSize();
+            newContextSettings.threadCount = dialog.getThreadCount();
+            newContextSettings.batchSize = dialog.getBatchSize();
+            
+            if (newContextSettings.contextSize != contextSettings.contextSize ||
+                newContextSettings.threadCount != contextSettings.threadCount ||
+                newContextSettings.batchSize != contextSettings.batchSize) {
+                
+                contextSettings = newContextSettings;
+                
+                if (worker && !modelPathEdit->text().isEmpty()) {
+                    QMessageBox::information(this, "Settings Changed", 
+                        "Context settings have changed. Please reload the model for changes to take effect.");
+                }
+            }
+             
+            saveSettings();
+            
+            chatDisplay->append(Styles::HTML_INFO.arg("Settings updated."));
+        }
+    }
+    
+    void onAboutClicked() {
+        QMessageBox msgBox(this);
+        msgBox.setWindowTitle("About Lunaria");
+ 
+        msgBox.setText("<h2>Lunaria v1.0</h2>"
+                    "<p><a href=\"https://github.com/RezkyKam50/Lunaria\">https://github.com/RezkyKam50/Lunaria</a></p>");
+ 
+        msgBox.setTextFormat(Qt::RichText);
+        msgBox.setTextInteractionFlags(Qt::TextBrowserInteraction);
+        msgBox.setStandardButtons(QMessageBox::Ok);
+
+        msgBox.exec();
     }
     
     void onError(const QString &error) {
-
-        progressBar     ->setVisible(false);
-        loadButton      ->setEnabled(true);
-        browseButton    ->setEnabled(true);
+        setProgressBarVisible(progressBar, false);
+        setModelControlsEnabled(browseButton, loadButton, true);
+        setStatus(llmStatusLabel, "Error", Styles::STATUS_ERROR);
         
-        chatDisplay->append(QString("<b style='color: red;'>Error:</b> %1").arg(error));
+        chatDisplay->append(Styles::HTML_ERROR.arg(error));
          
         if (worker) {
-            userInput   ->setEnabled(true);
-            sendButton  ->setEnabled(true);
+            userInput->setEnabled(true);
+            sendButton->setEnabled(true);
         }
-
+    }
+    
+    void onWhisperError(const QString &error) {
+        setProgressBarVisible(whisperProgressBar, false);
+        setModelControlsEnabled(whisperBrowseButton, whisperLoadButton, true);
+        setStatus(whisperStatusLabel, "Error", Styles::STATUS_ERROR);
+        
+        QMessageBox::critical(this, "Whisper Error", error);
     }
 
+
+
+
 signals:
-    void loadModel(const QString &modelPath);
-    void generateResponse(const QString &prompt);
+    void loadModel(const QString &modelPath, const ContextSettings &settings);
+    void generateResponse(const QString &prompt, const GenerationSettings &settings);
+    void loadWhisperModel(const QString &modelPath);
+    void transcribeAudio(const std::vector<float> &audioData);
+    
 
 private:
-    QLineEdit *modelPathEdit;
-    QLineEdit *userInput;
-    QTextEdit *chatDisplay;
-    QPushButton *browseButton;
-    QPushButton *loadButton;
-    QPushButton *sendButton;
-    QPushButton *clearButton;
-    QProgressBar *progressBar;
+ 
+    QLineEdit       *modelPathEdit;
+    QLineEdit       *userInput;
+    QTextEdit       *chatDisplay;
+    QPushButton     *browseButton;
+    QPushButton     *loadButton;
+    QPushButton     *sendButton;
+    QPushButton     *clearButton;
+    QProgressBar    *progressBar;
+    QLabel          *llmStatusLabel;
+    QLineEdit       *whisperPathEdit;
+    QPushButton     *whisperBrowseButton;
+    QPushButton     *whisperLoadButton;
+    QPushButton     *recordButton;
+    QLabel          *whisperStatusLabel;
+    QProgressBar    *whisperProgressBar;
+
+ 
     
-    QThread workerThread;
-    LlamaWorker *worker;
-    QString currentResponse;
+    QAudioSource    *audioInput     = nullptr;
+    QBuffer         *audioBuffer    = nullptr;
+
+    QElapsedTimer   modelLoadTimer;
+    QElapsedTimer   whisperLoadTimer;
+    QByteArray      audioData;
+
+    QString         savedModelPath;
+    QString         savedWhisperPath;
+    
+    QString         currentResponse;
+    QString         systemPrompt;
+    QString         conversationHistory;
+
+    GenerationSettings  generationSettings;
+    ContextSettings     contextSettings;
+
+    QThread         whisperThread;
+    QThread         workerThread;
+
+    WhisperWorker   *whisperWorker;
+    LlamaWorker     *worker;
+
+
+    bool isRecording = false;
 };
 
 int main(int argc, char *argv[])

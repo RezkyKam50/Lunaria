@@ -1,0 +1,26 @@
+rm -rf ./build_whisper && mkdir ./build_whisper && cd ./build_whisper 
+
+C_FLAGS="-O3 -march=native -mtune=native"
+CXX_FLAGS="$C_FLAGS"
+
+cmake .. -G Ninja \
+-DGGML_CUDA=OFF \
+-DGGML_OPENMP=ON \
+-DCMAKE_BUILD_TYPE=Release \
+-DCMAKE_C_FLAGS="$C_FLAGS" \
+-DCMAKE_CXX_FLAGS="$CXX_FLAGS" \
+-DGGML_NATIVE=ON \
+-DBUILD_SHARED_LIBS=ON \
+-DGGML_LLAMAFILE=OFF \
+-DGGML_AVX512=ON \
+-DGGML_AVX512_VBMI=ON \
+-DGGML_AVX512_VNNI=ON \
+-DGGML_AVX512_BF16=ON \
+-DGGML_CPU_REPACK=ON \
+-DGGML_CCACHE=ON \
+-DCMAKE_C_COMPILER_LAUNCHER=ccache \
+-DCMAKE_CXX_COMPILER_LAUNCHER=ccache \
+-DCMAKE_CUDA_COMPILER_LAUNCHER=ccache 
+
+ninja
+
