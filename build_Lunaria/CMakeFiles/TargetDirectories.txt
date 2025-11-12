@@ -1,5 +1,0 @@
-/home/rezkykam/Lunaria/build_Lunaria/CMakeFiles/Lunaria.dir
-/home/rezkykam/Lunaria/build_Lunaria/CMakeFiles/edit_cache.dir
-/home/rezkykam/Lunaria/build_Lunaria/CMakeFiles/rebuild_cache.dir
-/home/rezkykam/Lunaria/build_Lunaria/CMakeFiles/Lunaria_autogen_timestamp_deps.dir
-/home/rezkykam/Lunaria/build_Lunaria/CMakeFiles/Lunaria_autogen.dir
