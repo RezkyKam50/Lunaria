@@ -7,15 +7,16 @@ generate_commit_message() {
     cat << EOF
 chore: auto-sync $timestamp
 
-## Statistics
+> Summary
 - Files changed: $changed_files
 - Timestamp: $timestamp
 
-## Purpose
-Automated commit to track work progress and preserve state.
+> Purpose
+Preserve latest local state.
 
-## Type
-Scheduled backup commit
+> Type
+Scheduled commit every 1:00AM Jakarta Time.
+
 EOF
 }
 
