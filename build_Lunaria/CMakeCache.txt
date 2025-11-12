@@ -24,6 +24,9 @@ CMAKE_AR:FILEPATH=/usr/bin/ar
 // MinSizeRel ...
 CMAKE_BUILD_TYPE:STRING=
 
+//No help, variable specified on the command line.
+CMAKE_CUDA_COMPILER_LAUNCHER:UNINITIALIZED=ccache
+
 //CXX compiler
 CMAKE_CXX_COMPILER:FILEPATH=/usr/lib64/ccache/c++
 
@@ -31,12 +34,15 @@ CMAKE_CXX_COMPILER:FILEPATH=/usr/lib64/ccache/c++
 // for the GCC compiler
 CMAKE_CXX_COMPILER_AR:FILEPATH=/usr/bin/gcc-ar
 
+//No help, variable specified on the command line.
+CMAKE_CXX_COMPILER_LAUNCHER:UNINITIALIZED=ccache
+
 //A wrapper around 'ranlib' adding the appropriate '--plugin' option
 // for the GCC compiler
 CMAKE_CXX_COMPILER_RANLIB:FILEPATH=/usr/bin/gcc-ranlib
 
 //Flags used by the CXX compiler during all build types.
-CMAKE_CXX_FLAGS:STRING=
+CMAKE_CXX_FLAGS:STRING=-O3 -march=native -mtune=native
 
 //Flags used by the CXX compiler during DEBUG builds.
 CMAKE_CXX_FLAGS_DEBUG:STRING=-g
@@ -57,12 +63,15 @@ CMAKE_C_COMPILER:FILEPATH=/usr/lib64/ccache/cc
 // for the GCC compiler
 CMAKE_C_COMPILER_AR:FILEPATH=/usr/bin/gcc-ar
 
+//No help, variable specified on the command line.
+CMAKE_C_COMPILER_LAUNCHER:UNINITIALIZED=ccache
+
 //A wrapper around 'ranlib' adding the appropriate '--plugin' option
 // for the GCC compiler
 CMAKE_C_COMPILER_RANLIB:FILEPATH=/usr/bin/gcc-ranlib
 
 //Flags used by the C compiler during all build types.
-CMAKE_C_FLAGS:STRING=
+CMAKE_C_FLAGS:STRING=-O3 -march=native -mtune=native
 
 //Flags used by the C compiler during DEBUG builds.
 CMAKE_C_FLAGS_DEBUG:STRING=-g

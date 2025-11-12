@@ -47,8 +47,9 @@ build cmake_object_order_depends_target_Lunaria: phony || Lunaria_autogen Lunari
 build CMakeFiles/Lunaria.dir/Lunaria_autogen/mocs_compilation.cpp.o: CXX_COMPILER__Lunaria_unscanned_ /home/rezkykam/Lunaria/build_Lunaria/Lunaria_autogen/mocs_compilation.cpp || cmake_object_order_depends_target_Lunaria
   DEFINES = -DQT_CORE_LIB -DQT_GUI_LIB -DQT_NO_DEBUG -DQT_WIDGETS_LIB
   DEP_FILE = CMakeFiles/Lunaria.dir/Lunaria_autogen/mocs_compilation.cpp.o.d
-  FLAGS = -std=gnu++17
+  FLAGS = -O3 -march=native -mtune=native -std=gnu++17
   INCLUDES = -I/home/rezkykam/Lunaria/build_Lunaria/Lunaria_autogen/include -I/home/rezkykam/Lunaria/src/../llama.cpp/include -I/home/rezkykam/Lunaria/src/../llama.cpp/common -I/home/rezkykam/Lunaria/src/../llama.cpp/ggml/include -isystem /usr/include/qt6/QtCore -isystem /usr/include/qt6 -isystem /usr/lib64/qt6/mkspecs/linux-g++ -isystem /usr/include/qt6/QtWidgets -isystem /usr/include/qt6/QtGui
+  LAUNCHER = ccache 
   OBJECT_DIR = CMakeFiles/Lunaria.dir
   OBJECT_FILE_DIR = CMakeFiles/Lunaria.dir/Lunaria_autogen
   TARGET_COMPILE_PDB = CMakeFiles/Lunaria.dir/
@@ -57,8 +58,20 @@ build CMakeFiles/Lunaria.dir/Lunaria_autogen/mocs_compilation.cpp.o: CXX_COMPILE
 build CMakeFiles/Lunaria.dir/lunaria.cpp.o: CXX_COMPILER__Lunaria_unscanned_ /home/rezkykam/Lunaria/src/lunaria.cpp || cmake_object_order_depends_target_Lunaria
   DEFINES = -DQT_CORE_LIB -DQT_GUI_LIB -DQT_NO_DEBUG -DQT_WIDGETS_LIB
   DEP_FILE = CMakeFiles/Lunaria.dir/lunaria.cpp.o.d
-  FLAGS = -std=gnu++17
+  FLAGS = -O3 -march=native -mtune=native -std=gnu++17
   INCLUDES = -I/home/rezkykam/Lunaria/build_Lunaria/Lunaria_autogen/include -I/home/rezkykam/Lunaria/src/../llama.cpp/include -I/home/rezkykam/Lunaria/src/../llama.cpp/common -I/home/rezkykam/Lunaria/src/../llama.cpp/ggml/include -isystem /usr/include/qt6/QtCore -isystem /usr/include/qt6 -isystem /usr/lib64/qt6/mkspecs/linux-g++ -isystem /usr/include/qt6/QtWidgets -isystem /usr/include/qt6/QtGui
+  LAUNCHER = ccache 
+  OBJECT_DIR = CMakeFiles/Lunaria.dir
+  OBJECT_FILE_DIR = CMakeFiles/Lunaria.dir
+  TARGET_COMPILE_PDB = CMakeFiles/Lunaria.dir/
+  TARGET_PDB = Lunaria.pdb
+
+build CMakeFiles/Lunaria.dir/llamaworker.cpp.o: CXX_COMPILER__Lunaria_unscanned_ /home/rezkykam/Lunaria/src/llamaworker.cpp || cmake_object_order_depends_target_Lunaria
+  DEFINES = -DQT_CORE_LIB -DQT_GUI_LIB -DQT_NO_DEBUG -DQT_WIDGETS_LIB
+  DEP_FILE = CMakeFiles/Lunaria.dir/llamaworker.cpp.o.d
+  FLAGS = -O3 -march=native -mtune=native -std=gnu++17
+  INCLUDES = -I/home/rezkykam/Lunaria/build_Lunaria/Lunaria_autogen/include -I/home/rezkykam/Lunaria/src/../llama.cpp/include -I/home/rezkykam/Lunaria/src/../llama.cpp/common -I/home/rezkykam/Lunaria/src/../llama.cpp/ggml/include -isystem /usr/include/qt6/QtCore -isystem /usr/include/qt6 -isystem /usr/lib64/qt6/mkspecs/linux-g++ -isystem /usr/include/qt6/QtWidgets -isystem /usr/include/qt6/QtGui
+  LAUNCHER = ccache 
   OBJECT_DIR = CMakeFiles/Lunaria.dir
   OBJECT_FILE_DIR = CMakeFiles/Lunaria.dir
   TARGET_COMPILE_PDB = CMakeFiles/Lunaria.dir/
@@ -72,8 +85,9 @@ build CMakeFiles/Lunaria.dir/lunaria.cpp.o: CXX_COMPILER__Lunaria_unscanned_ /ho
 #############################################
 # Link the executable Lunaria
 
-build Lunaria: CXX_EXECUTABLE_LINKER__Lunaria_ CMakeFiles/Lunaria.dir/Lunaria_autogen/mocs_compilation.cpp.o CMakeFiles/Lunaria.dir/lunaria.cpp.o | /usr/lib64/libQt6Widgets.so.6.10.0 /home/rezkykam/Lunaria/llama.cpp/build_llama/bin/libllama.so /home/rezkykam/Lunaria/llama.cpp/build_llama/common/libcommon.a /home/rezkykam/Lunaria/llama.cpp/build_llama/bin/libggml.so /usr/lib64/libQt6Gui.so.6.10.0 /usr/lib64/libGLX.so /usr/lib64/libOpenGL.so /usr/lib64/libQt6Core.so.6.10.0 || Lunaria_autogen Lunaria_autogen_timestamp_deps
+build Lunaria: CXX_EXECUTABLE_LINKER__Lunaria_ CMakeFiles/Lunaria.dir/Lunaria_autogen/mocs_compilation.cpp.o CMakeFiles/Lunaria.dir/lunaria.cpp.o CMakeFiles/Lunaria.dir/llamaworker.cpp.o | /usr/lib64/libQt6Widgets.so.6.10.0 /home/rezkykam/Lunaria/llama.cpp/build_llama/bin/libllama.so /home/rezkykam/Lunaria/llama.cpp/build_llama/common/libcommon.a /home/rezkykam/Lunaria/llama.cpp/build_llama/bin/libggml.so /usr/lib64/libQt6Gui.so.6.10.0 /usr/lib64/libGLX.so /usr/lib64/libOpenGL.so /usr/lib64/libQt6Core.so.6.10.0 || Lunaria_autogen Lunaria_autogen_timestamp_deps
   DEP_FILE = CMakeFiles/Lunaria.dir/link.d
+  FLAGS = -O3 -march=native -mtune=native
   LINK_FLAGS = -Wl,--dependency-file=CMakeFiles/Lunaria.dir/link.d
   LINK_LIBRARIES = -Wl,-rpath,/home/rezkykam/Lunaria/llama.cpp/build_llama/bin  /usr/lib64/libQt6Widgets.so.6.10.0  /home/rezkykam/Lunaria/llama.cpp/build_llama/bin/libllama.so  /home/rezkykam/Lunaria/llama.cpp/build_llama/common/libcommon.a  /home/rezkykam/Lunaria/llama.cpp/build_llama/bin/libggml.so  /usr/lib64/libQt6Gui.so.6.10.0  /usr/lib64/libGLX.so  /usr/lib64/libOpenGL.so  /usr/lib64/libQt6Core.so.6.10.0
   OBJECT_DIR = CMakeFiles/Lunaria.dir

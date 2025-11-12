@@ -6,6 +6,7 @@
   /home/rezkykam/Lunaria/llama.cpp/ggml/include/ggml-opt.h \
   /home/rezkykam/Lunaria/llama.cpp/ggml/include/ggml.h \
   /home/rezkykam/Lunaria/llama.cpp/include/llama.h \
+  /home/rezkykam/Lunaria/src/llamaworker.h \
   /usr/include/alloca.h \
   /usr/include/asm-generic/bitsperlong.h \
   /usr/include/asm-generic/errno-base.h \
@@ -279,6 +280,8 @@
   /usr/include/linux/types.h \
   /usr/include/locale.h \
   /usr/include/pthread.h \
+  /usr/include/qt6/QtCore/QObject \
+  /usr/include/qt6/QtCore/QString \
   /usr/include/qt6/QtCore/QThread \
   /usr/include/qt6/QtCore/q17memory.h \
   /usr/include/qt6/QtCore/q20functional.h \

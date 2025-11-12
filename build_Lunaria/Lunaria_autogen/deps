@@ -10,6 +10,8 @@ Lunaria_autogen/timestamp: \
 	/home/rezkykam/Lunaria/llama.cpp/ggml/include/ggml.h \
 	/home/rezkykam/Lunaria/llama.cpp/include/llama.h \
 	/home/rezkykam/Lunaria/src/CMakeLists.txt \
+	/home/rezkykam/Lunaria/src/llamaworker.cpp \
+	/home/rezkykam/Lunaria/src/llamaworker.h \
 	/home/rezkykam/Lunaria/src/lunaria.cpp \
 	/usr/include/alloca.h \
 	/usr/include/asm-generic/bitsperlong.h \
@@ -284,6 +286,8 @@ Lunaria_autogen/timestamp: \
 	/usr/include/linux/types.h \
 	/usr/include/locale.h \
 	/usr/include/pthread.h \
+	/usr/include/qt6/QtCore/QObject \
+	/usr/include/qt6/QtCore/QString \
 	/usr/include/qt6/QtCore/QThread \
 	/usr/include/qt6/QtCore/q17memory.h \
 	/usr/include/qt6/QtCore/q20functional.h \

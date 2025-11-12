@@ -62,7 +62,13 @@ if(NOT COMMON_LIB)
     message(WARNING "Could not find common library. Will try to link without it.")
 endif()
  
-add_executable(Lunaria lunaria.cpp)
+add_executable(
+    Lunaria 
+    lunaria.cpp 
+    llamaworker.cpp 
+    llamaworker.h
+)
+
  
 if(COMMON_LIB)
     target_link_libraries(Lunaria 

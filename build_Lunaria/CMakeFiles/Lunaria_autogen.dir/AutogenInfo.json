@@ -563,7 +563,15 @@
 	"CROSS_CONFIG" : false,
 	"DEP_FILE" : "/home/rezkykam/Lunaria/build_Lunaria/Lunaria_autogen/deps",
 	"DEP_FILE_RULE_NAME" : "Lunaria_autogen/timestamp",
-	"HEADERS" : [],
+	"HEADERS" : 
+	[
+		[
+			"/home/rezkykam/Lunaria/src/llamaworker.h",
+			"Mu",
+			"EWIEGA46WW/moc_llamaworker.cpp",
+			null
+		]
+	],
 	"HEADER_EXTENSIONS" : [ "h", "hh", "h++", "hm", "hpp", "hxx", "in", "txx" ],
 	"INCLUDE_DIR" : "/home/rezkykam/Lunaria/build_Lunaria/Lunaria_autogen/include",
 	"MOC_COMPILATION_FILE" : "/home/rezkykam/Lunaria/build_Lunaria/Lunaria_autogen/mocs_compilation.cpp",
@@ -625,6 +633,7 @@
 	"SETTINGS_FILE" : "/home/rezkykam/Lunaria/build_Lunaria/CMakeFiles/Lunaria_autogen.dir/AutogenUsed.txt",
 	"SOURCES" : 
 	[
+		[ "/home/rezkykam/Lunaria/src/llamaworker.cpp", "Mu", null ],
 		[ "/home/rezkykam/Lunaria/src/lunaria.cpp", "Mu", null ]
 	],
 	"USE_BETTER_GRAPH" : true,
