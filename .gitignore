@@ -2,5 +2,6 @@ build_Lunaria/
 Lunaria
 Lunaria.*
 *.gguf
+*.bin
 .vscode
 ener-g/
