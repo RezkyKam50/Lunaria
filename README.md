@@ -1,6 +1,6 @@
 # Lunaria
 
-Run LLM's fully local and isolated.
+Run LLM's fully local.
 
 > Ubuntu/Debian Setup
 
