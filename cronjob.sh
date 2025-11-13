@@ -1,8 +1,5 @@
 #!/bin/bash
 
-source ~/.bashrc
-export PATH=/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin
-
 generate_commit_message() {
     local timestamp=$(date '+%Y-%m-%d %H:%M:%S')
     local changed_files=$(git diff --cached --name-only | wc -l)
