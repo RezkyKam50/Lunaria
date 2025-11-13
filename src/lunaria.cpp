@@ -435,7 +435,6 @@ private slots:
         QString fileName = QFileDialog::getOpenFileName(
             this,
             "Select GGUF Model",
-            // Start from last used directory or home
             savedModelPath.isEmpty() ? QDir::homePath() : QFileInfo(savedModelPath).absolutePath(),
             "GGUF Models (*.gguf);;All Files (*)"
         );

@@ -22,8 +22,7 @@ void SettingsDialog::setupUI()
     auto *mainLayout = new QVBoxLayout(this);
     
     QTabWidget *tabWidget = new QTabWidget();
-    
-    // === System Prompt Tab ===
+     
     QWidget *promptTab = new QWidget();
     auto *promptLayout = new QVBoxLayout(promptTab);
     
@@ -47,8 +46,7 @@ void SettingsDialog::setupUI()
     
     promptLayout->addWidget(promptGroup);
     promptLayout->addStretch();
-    
-    // === Generation Parameters Tab ===
+     
     QWidget *paramsTab = new QWidget();
     auto *paramsLayout = new QVBoxLayout(paramsTab);
     
@@ -64,8 +62,7 @@ void SettingsDialog::setupUI()
     temperatureSpin->setRange(0.0, 2.0);
     temperatureSpin->setSingleStep(0.1);
     temperatureSpin->setDecimals(2);
-    
-    // Create a widget container for the label and description
+     
     auto *tempLabelWidget = new QWidget();
     auto *tempLabelLayout = new QVBoxLayout(tempLabelWidget);
     tempLabelLayout->setContentsMargins(0, 0, 0, 0);
@@ -82,8 +79,7 @@ void SettingsDialog::setupUI()
     topPSpin->setRange(0.0, 1.0);
     topPSpin->setSingleStep(0.05);
     topPSpin->setDecimals(2);
-    
-    // Create a widget container for the label and description
+     
     auto *topPLabelWidget = new QWidget();
     auto *topPLabelLayout = new QVBoxLayout(topPLabelWidget);
     topPLabelLayout->setContentsMargins(0, 0, 0, 0);
@@ -102,8 +98,7 @@ void SettingsDialog::setupUI()
     generationForm->addRow("Top K:", topKSpin);
     
     generationGroup->setLayout(generationForm);
-    
-    // === Context Parameters ===
+     
     auto *contextGroup = new QGroupBox("Context Settings");
     auto *contextForm = new QFormLayout();
     
@@ -127,14 +122,12 @@ void SettingsDialog::setupUI()
     paramsLayout->addWidget(generationGroup);
     paramsLayout->addWidget(contextGroup);
     paramsLayout->addStretch();
-    
-    // Add tabs
+     
     tabWidget->addTab(promptTab, "System Prompt");
     tabWidget->addTab(paramsTab, "Parameters");
     
     mainLayout->addWidget(tabWidget);
-    
-    // Dialog buttons
+     
     QDialogButtonBox *buttonBox = new QDialogButtonBox(
         QDialogButtonBox::Ok | QDialogButtonBox::Cancel
     );

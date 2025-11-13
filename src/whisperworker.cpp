@@ -17,15 +17,13 @@ WhisperWorker::~WhisperWorker()
 void WhisperWorker::loadModel(const QString &modelPath)
 {
     try {
-        // Free existing context if any
         if (ctx) {
             whisper_free(ctx);
             ctx = nullptr;
         }
-        
-        // Initialize whisper context
+         
         struct whisper_context_params cparams = whisper_context_default_params();
-        cparams.use_gpu = true; // Enable GPU if available
+        cparams.use_gpu = true;  
         
         ctx = whisper_init_from_file_with_params(modelPath.toStdString().c_str(), cparams);
         
@@ -57,10 +55,8 @@ void WhisperWorker::transcribe(const std::vector<float> &audioData)
     }
     
     try {
-        // Set up whisper parameters
         struct whisper_full_params wparams = whisper_full_default_params(WHISPER_SAMPLING_GREEDY);
-        
-        // Configuration for better transcription
+         
         wparams.print_realtime   = false;
         wparams.print_progress   = false;
         wparams.print_timestamps = false;
@@ -74,16 +70,14 @@ void WhisperWorker::transcribe(const std::vector<float> &audioData)
         wparams.max_len          = 1;
         wparams.split_on_word    = true;
         wparams.suppress_blank   = true;
-        
-        // Run the transcription
+         
         int result = whisper_full(ctx, wparams, audioData.data(), audioData.size());
         
         if (result != 0) {
             emit errorOccurred("Whisper transcription failed");
             return;
         }
-        
-        // Extract the transcribed text
+         
         QString transcription;
         const int n_segments = whisper_full_n_segments(ctx);
         
