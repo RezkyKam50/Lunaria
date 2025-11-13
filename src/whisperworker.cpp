@@ -42,7 +42,7 @@ void WhisperWorker::loadModel(const QString &modelPath)
     }
 }
 
-void WhisperWorker::transcribe(const std::vector<float> &audioData)
+void WhisperWorker::transcribe(const std::vector<float> &audioData, const WhisperSettings &settings)
 {
     if (!ctx || !isModelLoaded) {
         emit errorOccurred("Whisper model not loaded");
@@ -57,19 +57,19 @@ void WhisperWorker::transcribe(const std::vector<float> &audioData)
     try {
         struct whisper_full_params wparams = whisper_full_default_params(WHISPER_SAMPLING_GREEDY);
          
-        wparams.print_realtime   = false;
-        wparams.print_progress   = false;
-        wparams.print_timestamps = false;
-        wparams.print_special    = false;
-        wparams.translate        = false;
-        wparams.language         = "en"; // Change to "auto" for auto-detection
-        wparams.n_threads        = 4;
-        wparams.offset_ms        = 0;
-        wparams.duration_ms      = 0;
-        wparams.token_timestamps = false;
-        wparams.max_len          = 1;
-        wparams.split_on_word    = true;
-        wparams.suppress_blank   = true;
+        wparams.print_realtime = settings.printRealtime;
+        wparams.print_progress = settings.printProgress;
+        wparams.print_timestamps = settings.printTimestamps;
+        wparams.print_special = settings.printSpecial;
+        wparams.translate = settings.translate;
+        wparams.language = settings.language.toStdString().c_str();
+        wparams.n_threads = settings.threads;
+        wparams.offset_ms = settings.offsetMs;
+        wparams.duration_ms = settings.durationMs;
+        wparams.token_timestamps = settings.tokenTimestamps;
+        wparams.max_len = settings.maxLen;
+        wparams.split_on_word = settings.splitOnWord;
+        wparams.suppress_blank = settings.suppressBlank;
          
         int result = whisper_full(ctx, wparams, audioData.data(), audioData.size());
         

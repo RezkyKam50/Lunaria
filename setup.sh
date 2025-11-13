@@ -7,6 +7,9 @@ echo "Compiling LLM Engine module: 'llama.cpp' from source..."
 echo "Compiling Voice Recognition module: 'whisper.cpp' from source..."
 ./tools/buildWhisper.sh
 
+echo "Compiling Text Extraction module: 'tesseract' from source..."
+./tools/buildTesseract.sh
+
 echo "Downloading example models..."
 ./models/installModel.sh
 

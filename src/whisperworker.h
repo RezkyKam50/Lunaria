@@ -6,6 +6,22 @@
 #include <vector>
 #include "whisper.h"
 
+struct WhisperSettings {
+    bool printRealtime;
+    bool printProgress;
+    bool printTimestamps;
+    bool printSpecial;
+    bool translate;
+    QString language;
+    int threads;
+    int offsetMs;
+    int durationMs;
+    bool tokenTimestamps;
+    int maxLen;
+    bool splitOnWord;
+    bool suppressBlank;
+};
+
 class WhisperWorker : public QObject
 {
     Q_OBJECT
@@ -16,7 +32,7 @@ public:
 
 public slots:
     void loadModel(const QString &modelPath);
-    void transcribe(const std::vector<float> &audioData);
+    void transcribe(const std::vector<float> &audioData, const WhisperSettings &settings);   
 
 signals:
     void modelLoaded();

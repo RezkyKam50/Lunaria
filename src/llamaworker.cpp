@@ -8,6 +8,7 @@ LlamaWorker::~LlamaWorker() {
     cleanup();
 }
 
+
 void LlamaWorker::loadModel(const QString &modelPath, const ContextSettings &settings) {
     cleanup();
      
@@ -34,8 +35,7 @@ void LlamaWorker::loadModel(const QString &modelPath, const ContextSettings &set
         emit errorOccurred("Failed to initialize context");
         return;
     }
-     
-    // Initialize with default sampler (will be updated on generation)
+      
     llama_sampler_chain_params sampler_params = llama_sampler_chain_default_params();
     sampler = llama_sampler_chain_init(sampler_params);
     llama_sampler_chain_add(sampler, llama_sampler_init_greedy());
@@ -50,8 +50,7 @@ void LlamaWorker::updateSampler(const GenerationSettings &settings) {
     
     llama_sampler_chain_params sampler_params = llama_sampler_chain_default_params();
     sampler = llama_sampler_chain_init(sampler_params);
-    
-    // Add sampling parameters based on settings
+     
     if (settings.temperature > 0.0) {
         llama_sampler_chain_add(sampler, 
             llama_sampler_init_temp(settings.temperature));
@@ -73,47 +72,49 @@ void LlamaWorker::updateSampler(const GenerationSettings &settings) {
     }
 }
 
+
 void LlamaWorker::generateResponse(const QString &prompt, const GenerationSettings &settings) {
     if (!ctx || !model) {
         emit errorOccurred("Model not loaded");
         return;
     }
-    
-    // Update sampler with current settings
-    updateSampler(settings);
      
+    updateSampler(settings);
+    
     const llama_vocab *vocab = llama_model_get_vocab(model);
      
+    std::string prompt_str = prompt.toStdString();
+     
     std::vector<llama_token> tokens;
-    tokens.resize(prompt.length() + 256);
+    tokens.resize(prompt_str.length() + 256);
     
     int n_tokens = llama_tokenize(
-                                    vocab,
-                                    prompt.toStdString().c_str(),
-                                    prompt.length(),
-                                    tokens.data(),
-                                    tokens.size(),
-                                    true,   // add_bos
-                                    false   // special
+        vocab,
+        prompt_str.c_str(),
+        prompt_str.length(),
+        tokens.data(),
+        tokens.size(),
+        true,   // add_bos
+        true   // special
     );
     
     if (n_tokens < 0) {
         tokens.resize(-n_tokens);
         n_tokens = llama_tokenize(
-                                    vocab,
-                                    prompt.toStdString().c_str(),
-                                    prompt.length(),
-                                    tokens.data(),
-                                    tokens.size(),
-                                    true,
-                                    false
-                                );
+            vocab,
+            prompt_str.c_str(),
+            prompt_str.length(),
+            tokens.data(),
+            tokens.size(),
+            true,
+            true
+        );
     }
     
     tokens.resize(n_tokens);
      
     llama_batch batch = llama_batch_get_one(tokens.data(), tokens.size());
-     
+    
     if (llama_decode(ctx, batch) != 0) {
         emit errorOccurred("Failed to evaluate prompt");
         return;
@@ -140,9 +141,10 @@ void LlamaWorker::generateResponse(const QString &prompt, const GenerationSettin
         }
         
         QString token_str = QString::fromUtf8(buf, n);
-        response += token_str;
-         
+        
+        // ADD THIS: Emit partial response
         emit partialResponse(token_str);
+        response += token_str;
          
         if (n_cur >= n_ctx - 1) {
             emit errorOccurred("Context limit reached");

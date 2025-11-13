@@ -4,4 +4,5 @@ Lunaria.*
 *.gguf
 *.bin
 .vscode
-ener-g/
+Energy/
+TextExtract/

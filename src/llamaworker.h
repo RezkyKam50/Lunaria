@@ -6,17 +6,17 @@
 #include "llama.h"
 
 struct GenerationSettings {
-    int maxTokens = 512;
-    double temperature = 0.7;
-    double topP = 0.9;
-    int topK = 40;
+    int maxTokens       = 512;
+    double temperature  = 0.7;
+    double topP         = 0.9;
+    int topK            = 40;
 };
 
 struct ContextSettings {
-    int contextSize = 2048;
-    int threadCount = 8;
-    int batchSize = 512;
-};
+    int contextSize     = 2048;
+    int threadCount     = 8;
+    int batchSize       = 512;
+};  
 
 class LlamaWorker : public QObject
 {

@@ -1,6 +1,7 @@
 cmake_minimum_required(VERSION 3.16)
 project(Lunaria)
 
+# TODO: QtCharts is planned for performance graph eg. (GPU utils, CPU utils, etc.)
 find_package(Qt6 REQUIRED COMPONENTS Core Widgets Multimedia Charts)
 
 set(CMAKE_CXX_STANDARD 17)
@@ -25,6 +26,23 @@ include_directories(
     ${WHISPER_CPP_DIR}/include
     ${WHISPER_CPP_DIR}/ggml/include
 )
+
+# Find Poppler (for PDF support)
+find_package(PkgConfig REQUIRED)
+pkg_check_modules(POPPLER REQUIRED poppler-cpp)
+
+if(POPPLER_FOUND)
+    message(STATUS "=== POPPLER Configuration ===")
+    message(STATUS "Poppler version: ${POPPLER_VERSION}")
+    message(STATUS "Poppler include dirs: ${POPPLER_INCLUDE_DIRS}")
+    message(STATUS "Poppler libraries: ${POPPLER_LIBRARIES}")
+    message(STATUS "Poppler library dirs: ${POPPLER_LIBRARY_DIRS}")
+    
+    include_directories(${POPPLER_INCLUDE_DIRS})
+    link_directories(${POPPLER_LIBRARY_DIRS})
+else()
+    message(FATAL_ERROR "Poppler not found. Please install poppler development files (e.g., libpoppler-cpp-dev on Debian/Ubuntu)")
+endif()
 
 #* enable BUILD_SHARED_LIBS 
 
@@ -109,7 +127,7 @@ endif()
 if(NOT WHISPER_GGML_LIB)
     message(WARNING "Could not find whisper's ggml library. Will try to link without it.")
 endif()
- 
+
 add_executable(Lunaria 
     lunaria.cpp 
     llamaworker.cpp 
@@ -119,7 +137,6 @@ add_executable(Lunaria
     settingsdialog.cpp
     settingsdialog.h
 )
- 
 
 set(LINK_LIBS
     Qt6::Core 
@@ -129,8 +146,9 @@ set(LINK_LIBS
     ${LLAMA_LIB}
     ${GGML_LIB}
     ${WHISPER_LIB}
+    ${POPPLER_LIBRARIES}
 )
- 
+
 if(COMMON_LIB)
     list(APPEND LINK_LIBS ${COMMON_LIB})
 endif()
@@ -140,7 +158,7 @@ if(WHISPER_GGML_LIB)
 endif()
 
 target_link_libraries(Lunaria ${LINK_LIBS})
- 
+
 target_compile_definitions(Lunaria PRIVATE 
     "$<$<OR:$<CONFIG:Debug>,$<CONFIG:RelWithDebInfo>>:QT_QML_DEBUG>"
 )

@@ -1,3 +1,34 @@
+/**
+ * @file 
+ * @brief Lunaria-cpp
+ * @author rezkykam
+ *
+ * ----------------------------------------------------------------------------
+ * LICENSE  
+ * ----------------------------------------------------------------------------
+ * Lunaria is a derivative work based on several open-source components.
+ * The licensing of these components dictates the license of the final work.
+ *
+ * DEPENDENCIES AND THEIR LICENSES:
+ *   - Qt6           (LGPLv3/GPLv2+)      - https://www.qt.io/
+ *   - llama.cpp     (MIT License)        - https://github.com/ggerganov/llama.cpp
+ *   - whisper.cpp   (MIT License)        - https://github.com/ggerganov/whisper.cpp
+ *   - poppler       (GPLv3+ License)     - https://poppler.freedesktop.org/
+ *
+ * The GNU General Public License Version 3 (GPLv3) is a copyleft license that
+ * requires derivative works to be licensed under the same terms. Because Lunaria
+ * statically links against poppler (GPLv3), the entire work is considered a
+ * derivative and must be distributed under the GPLv3.
+ *
+ * Qt6 is available under multiple licenses including LGPLv3 and GPLv2+, which
+ * are compatible with GPLv3. When using Qt6 with Lunaria, you must comply with
+ * the terms of the GPLv3 for the entire application.
+ *
+ * Therefore, Lunaria is licensed under the GNU GPLv3.
+ * See the 'LICENSE' file in this distribution for the full terms and conditions.
+ * ----------------------------------------------------------------------------
+ */
+
 #include <QApplication>
 #include <QWidget>
 #include <QVBoxLayout>
@@ -26,7 +57,12 @@
 #include "whisperworker.h"
 #include "settingsdialog.h"
  
+#include <poppler-document.h>
+#include <poppler-page.h>
 
+
+// Interthread comms. were managed with QThread signal and slotting,
+// for ease of development, avoid using legacy MT ops. since it can interrupt with main UI leading to hard-to trace memory leaks.
 
 class ChatWindow : public QMainWindow
 {
@@ -57,6 +93,7 @@ private:
                                                                 /*threadCount=*/    8,
                                                                 /*batchSize=*/      512
         };
+        static constexpr int PDF_TRUNCATION_LENGTH          = 500;  
     };
     
     struct Styles {
@@ -89,8 +126,10 @@ private:
         static inline const QString HTML_INFO           = "<i style='color: cyan;'>%1</i>";
         static inline const QString HTML_LOADING        = "<i>%1</i>";
         static inline const QString HTML_USER           = "<b>You:</b> %1";
-        static inline const QString HTML_LLM            = "<b>LLM:</b> ";
+        static inline const QString HTML_LLM            = "<b>Assistant:</b> ";
         static inline const QString HTML_TRANSCRIBED    = "<i>Transcribed: %1</i>";
+        static inline const QString HTML_PDF_LOADED     = "<i style='color: cyan;'>PDF loaded: %1 (%2 pages)</i>";
+ 
     };
     
 public:
@@ -101,12 +140,14 @@ public:
         , systemPrompt          (Defaults::SYSTEM_PROMPT)
         , generationSettings    (Defaults::GENERATION)
         , contextSettings       (Defaults::CONTEXT)
+        , pdfTruncationLength   (Defaults::PDF_TRUNCATION_LENGTH) 
         , modelPathEdit         (nullptr)
         , userInput             (nullptr)
         , chatDisplay           (nullptr)
         , browseButton          (nullptr)
         , loadButton            (nullptr)
         , sendButton            (nullptr)
+        , uploadButton          (nullptr)
         , clearButton           (nullptr)
         , progressBar           (nullptr)
         , llmStatusLabel        (nullptr)
@@ -125,6 +166,7 @@ public:
         , savedWhisperPath      ("")
         , conversationHistory   ("")
         , currentResponse       ("")
+
         
     {
         setWindowTitle("Lunaria");
@@ -178,10 +220,8 @@ public:
             whisperLoadButton->setEnabled(true);
         }
     }
-
     
     ~ChatWindow() {
-
         saveSettings();  
 
         workerThread.quit();
@@ -222,12 +262,14 @@ private:
     }
 
     void loadSavedSettings() {
-        QSettings settings              ("Lunaria", "Lunaria");
+        QSettings settings("Lunaria", "Lunaria");
         
         savedModelPath                  = settings.value("model/lastPath", "").toString();
         savedWhisperPath                = settings.value("whisper/lastPath", "").toString();
-         
+        
         systemPrompt                    = settings.value("generation/systemPrompt", "You are a helpful AI assistant.").toString();
+        fewShotExamples                 = settings.value("generation/fewShotExamples", "").toString();  
+    
         generationSettings.maxTokens    = settings.value("generation/maxTokens", 512).toInt();
         generationSettings.temperature  = settings.value("generation/temperature", 0.3).toDouble();
         generationSettings.topP         = settings.value("generation/topP", 0.95).toDouble();
@@ -236,23 +278,58 @@ private:
         contextSettings.contextSize     = settings.value("context/size", 2048).toInt();
         contextSettings.threadCount     = settings.value("context/threads", 8).toInt();
         contextSettings.batchSize       = settings.value("context/batchSize", 512).toInt();
+        
+        pdfTruncationLength             = settings.value("generation/pdfTruncation", 500).toInt();  
+
+        whisperSettings.printRealtime   = settings.value("whisper/printRealtime", false).toBool();
+        whisperSettings.printProgress   = settings.value("whisper/printProgress", false).toBool();
+        whisperSettings.printTimestamps = settings.value("whisper/printTimestamps", false).toBool();
+        whisperSettings.printSpecial    = settings.value("whisper/printSpecial", false).toBool();
+        whisperSettings.translate       = settings.value("whisper/translate", false).toBool();
+        whisperSettings.language        = settings.value("whisper/language", "en").toString();
+        whisperSettings.threads         = settings.value("whisper/threads", 4).toInt();
+        whisperSettings.offsetMs        = settings.value("whisper/offsetMs", 0).toInt();
+        whisperSettings.durationMs      = settings.value("whisper/durationMs", 0).toInt();
+        whisperSettings.tokenTimestamps = settings.value("whisper/tokenTimestamps", false).toBool();
+        whisperSettings.maxLen          = settings.value("whisper/maxLen", 1).toInt();
+        whisperSettings.splitOnWord     = settings.value("whisper/splitOnWord", true).toBool();
+        whisperSettings.suppressBlank   = settings.value("whisper/suppressBlank", true).toBool();
+
     }
     
     void saveSettings() {
         QSettings settings              ("Lunaria", "Lunaria");
         
-        settings.setValue               ("model/lastPath",         modelPathEdit->text());
-        settings.setValue               ("whisper/lastPath",       whisperPathEdit->text());
-         
-        settings.setValue               ("generation/systemPrompt",systemPrompt);
-        settings.setValue               ("generation/maxTokens",   generationSettings.maxTokens);
-        settings.setValue               ("generation/temperature", generationSettings.temperature);
-        settings.setValue               ("generation/topP",        generationSettings.topP);
-        settings.setValue               ("generation/topK",        generationSettings.topK);
+        settings.setValue               ("model/lastPath",              modelPathEdit->text());
+        settings.setValue               ("whisper/lastPath",            whisperPathEdit->text());
         
-        settings.setValue               ("context/size",           contextSettings.contextSize);
-        settings.setValue               ("context/threads",        contextSettings.threadCount);
-        settings.setValue               ("context/batchSize",      contextSettings.batchSize);
+        settings.setValue               ("generation/systemPrompt",     systemPrompt);
+        settings.setValue               ("generation/fewShotExamples",  fewShotExamples);
+        settings.setValue               ("generation/maxTokens",        generationSettings.maxTokens);
+        settings.setValue               ("generation/temperature",      generationSettings.temperature);
+        settings.setValue               ("generation/topP",             generationSettings.topP);
+        settings.setValue               ("generation/topK",             generationSettings.topK);
+        
+        settings.setValue               ("context/size",                contextSettings.contextSize);
+        settings.setValue               ("context/threads",             contextSettings.threadCount);
+        settings.setValue               ("context/batchSize",           contextSettings.batchSize);
+        
+        settings.setValue               ("generation/pdfTruncation",    pdfTruncationLength);  
+
+        settings.setValue               ("whisper/printRealtime",       whisperSettings.printRealtime);
+        settings.setValue               ("whisper/printProgress",       whisperSettings.printProgress);
+        settings.setValue               ("whisper/printTimestamps",     whisperSettings.printTimestamps);
+        settings.setValue               ("whisper/printSpecial",        whisperSettings.printSpecial);
+        settings.setValue               ("whisper/translate",           whisperSettings.translate);
+        settings.setValue               ("whisper/language",            whisperSettings.language);
+        settings.setValue               ("whisper/threads",             whisperSettings.threads);
+        settings.setValue               ("whisper/offsetMs",            whisperSettings.offsetMs);
+        settings.setValue               ("whisper/durationMs",          whisperSettings.durationMs);
+        settings.setValue               ("whisper/tokenTimestamps",     whisperSettings.tokenTimestamps);
+        settings.setValue               ("whisper/maxLen",              whisperSettings.maxLen);
+        settings.setValue               ("whisper/splitOnWord",         whisperSettings.splitOnWord);
+        settings.setValue               ("whisper/suppressBlank",       whisperSettings.suppressBlank);
+
     }
 
 
@@ -343,12 +420,16 @@ private:
         userInput->setPlaceholderText("Type your message or use voice input...");
         userInput->setEnabled(false);
         
+        uploadButton        = new QPushButton("Upload PDF");
+        uploadButton->setEnabled(false);
+        
         sendButton          = new QPushButton("Send");
         sendButton->setEnabled(false);
         
         clearButton         = new QPushButton("Clear Chat");
         
         inputLayout->addWidget(userInput);
+        inputLayout->addWidget(uploadButton);
         inputLayout->addWidget(sendButton);
         inputLayout->addWidget(clearButton);
         
@@ -377,6 +458,40 @@ private:
         loadBtn->setEnabled(enabled);
     }
     
+    QString extractTextFromPDF(const QString &filePath, int maxChars = -1) {
+        if (maxChars == -1) {
+            maxChars = pdfTruncationLength;  
+        }
+        
+        std::unique_ptr<poppler::document> doc(poppler::document::load_from_file(filePath.toStdString()));
+        
+        if (!doc) {
+            return QString();
+        }
+        
+        QString extractedText;
+        int pageCount = doc->pages();
+        
+        for (int i = 0; i < pageCount; ++i) {
+            if (extractedText.length() >= maxChars) {
+                break;  
+            }
+            
+            std::unique_ptr<poppler::page> page(doc->create_page(i));
+            if (page) {
+                poppler::byte_array textBytes = page->text().to_utf8();
+                QString pageText = QString::fromUtf8(textBytes.data(), textBytes.size());
+                extractedText += pageText + "\n\n";
+            }
+        }
+        
+        if (extractedText.length() > maxChars) {
+            extractedText = extractedText.left(maxChars) + "\n...[truncated]";
+        }
+        
+        return extractedText.trimmed();
+    }
+    
     void setupWorker() {
         worker = new LlamaWorker();
         worker->moveToThread(&workerThread);
@@ -386,6 +501,7 @@ private:
         connect(browseButton,   &QPushButton::clicked,          this, &ChatWindow::onBrowseClicked);
         connect(loadButton,     &QPushButton::clicked,          this, &ChatWindow::onLoadModelClicked);
         connect(sendButton,     &QPushButton::clicked,          this, &ChatWindow::onSendClicked);
+        connect(uploadButton,   &QPushButton::clicked,          this, &ChatWindow::onUploadPDFClicked);
         connect(clearButton,    &QPushButton::clicked,          this, &ChatWindow::onClearChatClicked);
         connect(userInput,      &QLineEdit::returnPressed,      this, &ChatWindow::onSendClicked);
         
@@ -403,7 +519,7 @@ private:
     void setupWhisperWorker() {
         whisperWorker = new WhisperWorker();
         whisperWorker->moveToThread(&whisperThread);
-        
+
         connect(&whisperThread,     &QThread::finished, whisperWorker, &QObject::deleteLater);
         
         connect(whisperBrowseButton, &QPushButton::clicked,             this, &ChatWindow::onWhisperBrowseClicked);
@@ -508,6 +624,7 @@ private slots:
         
         userInput->setEnabled(true);
         sendButton->setEnabled(true);
+        uploadButton->setEnabled(true);
         
         chatDisplay->append(Styles::HTML_SUCCESS.arg("Success."));
         chatDisplay->append(Styles::HTML_SYSTEM.arg(QString("Model loaded in %1 ms").arg(loadTimeMs)));
@@ -559,8 +676,62 @@ private slots:
             audioFloats.resize(data.size() / sizeof(float));
             memcpy(audioFloats.data(), data.data(), data.size());
             
-            emit transcribeAudio(audioFloats);
+            emit transcribeAudio(audioFloats, whisperSettings);
         }
+    }
+    
+    void onUploadPDFClicked() {
+        QString fileName = QFileDialog::getOpenFileName(
+            this,
+            "Select PDF Document",
+            QDir::homePath(),
+            "PDF Files (*.pdf);;All Files (*)"
+        );
+        
+        if (fileName.isEmpty()) {
+            return;
+        }
+        
+        chatDisplay->append(Styles::HTML_LOADING.arg("Extracting text from PDF..."));
+        
+        QString extractedText = extractTextFromPDF(fileName);
+        
+        if (extractedText.isEmpty()) {
+            chatDisplay->append(Styles::HTML_ERROR.arg("Failed to extract text from PDF or PDF is empty."));
+            return;
+        }
+        
+        std::unique_ptr<poppler::document> doc(
+            poppler::document::load_from_file(fileName.toStdString())
+        );
+        
+        if (!doc) {
+            chatDisplay->append(Styles::HTML_ERROR.arg("Failed to load PDF document."));
+            return;
+        }
+        
+        int pageCount = doc->pages();   
+        
+        QFileInfo fileInfo(fileName);
+          
+        QString pdfContext = QString("\n\n[PDF Content from %1]:\n%2\n").arg(fileInfo.fileName()).arg(extractedText);
+         
+        conversationHistory += QString("<|user|>\n%1<|end|>\n"
+                                    "<|assistant|>\nI've loaded the PDF document '%2'. How can I help you with this content?<|end|>\n")
+                                .arg(pdfContext)
+                                .arg(fileInfo.fileName());
+         
+        
+        chatDisplay->append(Styles::HTML_PDF_LOADED.arg(fileInfo.fileName()).arg(pageCount));
+        chatDisplay->append(Styles::HTML_INFO.arg(
+            QString("Extracted %1 characters and appended to input.")
+            .arg(extractedText.length())
+        ));
+         
+        chatDisplay->append(Styles::HTML_SYSTEM.arg(
+            QString("PDF '%1' has been loaded into the conversation context. The LLM can now reference this content.")
+            .arg(fileInfo.fileName())
+        ));
     }
     
     void onSendClicked() {
@@ -570,28 +741,41 @@ private slots:
             return;
         }
         
+        lastUserMessage = message;
+        
         chatDisplay->append(Styles::HTML_USER.arg(message));
         userInput->clear();
         userInput->setEnabled(false);
         sendButton->setEnabled(false);
+        uploadButton->setEnabled(false);
         setStatus(llmStatusLabel, "Generating...", Styles::STATUS_LOADING);
-         
+        
         QString fullPrompt;
-         
-        if (conversationHistory.isEmpty() && !systemPrompt.isEmpty()) {
-            fullPrompt += QString("<|system|>\n%1\n").arg(systemPrompt);
+        
+        if (!systemPrompt.isEmpty()) {
+            fullPrompt += QString("<|system|>\n%1<|end|>\n").arg(systemPrompt);
         }
-         
-        fullPrompt += conversationHistory;
-         
-        fullPrompt += QString("<|user|>\n%1\n<|assistant|>\n").arg(message);
+        
+        if (!fewShotExamples.isEmpty()) {
+            QString updatedExamples = fewShotExamples;
+            updatedExamples.replace("<|im_start|>", "<|");
+            updatedExamples.replace("<|im_end|>", "<|end|>");
+            fullPrompt += updatedExamples;
+        }
+        
+        if (!conversationHistory.isEmpty()) {
+            fullPrompt += conversationHistory;
+        }
+        
+        fullPrompt += QString("<|user|>\n%1<|end|>\n").arg(message);
+        fullPrompt += QString("<|assistant|>\n");
         
         chatDisplay->append(Styles::HTML_LLM);
         currentResponse.clear();
         
         emit generateResponse(fullPrompt, generationSettings);
     }
-    
+
     void onPartialResponse(const QString &token) {
         currentResponse += token;
          
@@ -605,12 +789,14 @@ private slots:
     void onResponseGenerated(const QString &response) {
         chatDisplay->append("\n");
          
-        conversationHistory += QString("<|user|>\n%1\n<|assistant|>\n%2\n")
-            .arg(userInput->text().trimmed())
-            .arg(currentResponse);
+        conversationHistory += QString("<|user|>\n%1<|end|>\n"
+                                    "<|assistant|>\n%2<|end|>\n")
+                                .arg(lastUserMessage)
+                                .arg(currentResponse);
         
         userInput->setEnabled(true);
         sendButton->setEnabled(true);
+        uploadButton->setEnabled(true);
         setStatus(llmStatusLabel, "Ready", Styles::STATUS_READY);
         userInput->setFocus();
     }
@@ -634,32 +820,64 @@ private slots:
     
     void onSettingsClicked() {
         SettingsDialog dialog(this);
-         
-        dialog.setSystemPrompt(systemPrompt);
-        dialog.setMaxTokens(generationSettings.maxTokens);
-        dialog.setContextSize(contextSettings.contextSize);
-        dialog.setThreadCount(contextSettings.threadCount);
-        dialog.setBatchSize(contextSettings.batchSize);
-        dialog.setTemperature(generationSettings.temperature);
-        dialog.setTopP(generationSettings.topP);
-        dialog.setTopK(generationSettings.topK);
+        
+            dialog.setSystemPrompt          (systemPrompt);
+            dialog.setFewShotExamples       (fewShotExamples);  
+            dialog.setMaxTokens             (generationSettings.maxTokens);
+            dialog.setContextSize           (contextSettings.contextSize);
+            dialog.setThreadCount           (contextSettings.threadCount);
+            dialog.setBatchSize             (contextSettings.batchSize);
+            dialog.setTemperature           (generationSettings.temperature);
+            dialog.setTopP                  (generationSettings.topP);
+            dialog.setTopK                  (generationSettings.topK);
+            dialog.setPdfTruncationLength   (pdfTruncationLength); 
+            
+            dialog.setWhisperPrintRealtime  (whisperSettings.printRealtime);
+            dialog.setWhisperPrintProgress  (whisperSettings.printProgress);
+            dialog.setWhisperPrintTimestamps(whisperSettings.printTimestamps);
+            dialog.setWhisperPrintSpecial   (whisperSettings.printSpecial);
+            dialog.setWhisperTranslate      (whisperSettings.translate);
+            dialog.setWhisperLanguage       (whisperSettings.language);
+            dialog.setWhisperThreads        (whisperSettings.threads);
+            dialog.setWhisperOffsetMs       (whisperSettings.offsetMs);
+            dialog.setWhisperDurationMs     (whisperSettings.durationMs);
+            dialog.setWhisperTokenTimestamps(whisperSettings.tokenTimestamps);
+            dialog.setWhisperMaxLen         (whisperSettings.maxLen);
+            dialog.setWhisperSplitOnWord    (whisperSettings.splitOnWord);
+            dialog.setWhisperSuppressBlank  (whisperSettings.suppressBlank);
         
         if (dialog.exec() == QDialog::Accepted) {
 
-            systemPrompt = dialog.getSystemPrompt();
-            generationSettings.maxTokens = dialog.getMaxTokens();
-            generationSettings.temperature = dialog.getTemperature();
-            generationSettings.topP = dialog.getTopP();
-            generationSettings.topK = dialog.getTopK();
-            
+            systemPrompt                    = dialog.getSystemPrompt();
+            fewShotExamples                 = dialog.getFewShotExamples(); 
+            generationSettings.maxTokens    = dialog.getMaxTokens();
+            generationSettings.temperature  = dialog.getTemperature();
+            generationSettings.topP         = dialog.getTopP();
+            generationSettings.topK         = dialog.getTopK();
+            pdfTruncationLength             = dialog.getPdfTruncationLength();  
+
             ContextSettings newContextSettings;
-            newContextSettings.contextSize = dialog.getContextSize();
-            newContextSettings.threadCount = dialog.getThreadCount();
-            newContextSettings.batchSize = dialog.getBatchSize();
+            newContextSettings.contextSize  = dialog.getContextSize();
+            newContextSettings.threadCount  = dialog.getThreadCount();
+            newContextSettings.batchSize    = dialog.getBatchSize();
+
+            whisperSettings.printRealtime   = dialog.getWhisperPrintRealtime();
+            whisperSettings.printProgress   = dialog.getWhisperPrintProgress();
+            whisperSettings.printTimestamps = dialog.getWhisperPrintTimestamps();
+            whisperSettings.printSpecial    = dialog.getWhisperPrintSpecial();
+            whisperSettings.translate       = dialog.getWhisperTranslate();
+            whisperSettings.language        = dialog.getWhisperLanguage();
+            whisperSettings.threads         = dialog.getWhisperThreads();
+            whisperSettings.offsetMs        = dialog.getWhisperOffsetMs();
+            whisperSettings.durationMs      = dialog.getWhisperDurationMs();
+            whisperSettings.tokenTimestamps = dialog.getWhisperTokenTimestamps();
+            whisperSettings.maxLen          = dialog.getWhisperMaxLen();
+            whisperSettings.splitOnWord     = dialog.getWhisperSplitOnWord();
+            whisperSettings.suppressBlank   = dialog.getWhisperSuppressBlank();
             
-            if (newContextSettings.contextSize != contextSettings.contextSize ||
-                newContextSettings.threadCount != contextSettings.threadCount ||
-                newContextSettings.batchSize != contextSettings.batchSize) {
+            if (newContextSettings.contextSize  != contextSettings.contextSize ||
+                newContextSettings.threadCount  != contextSettings.threadCount ||
+                newContextSettings.batchSize    != contextSettings.batchSize) {
                 
                 contextSettings = newContextSettings;
                 
@@ -668,13 +886,13 @@ private slots:
                         "Context settings have changed. Please reload the model for changes to take effect.");
                 }
             }
-             
+            
             saveSettings();
             
             chatDisplay->append(Styles::HTML_INFO.arg("Settings updated."));
         }
     }
-    
+
     void onAboutClicked() {
         QMessageBox msgBox(this);
         msgBox.setWindowTitle("About Lunaria");
@@ -699,6 +917,7 @@ private slots:
         if (worker) {
             userInput->setEnabled(true);
             sendButton->setEnabled(true);
+            uploadButton->setEnabled(true);
         }
     }
     
@@ -712,22 +931,25 @@ private slots:
 
 
 
-
+// Initialization signals (Qt macro).
+// Send signals to execute a task
 signals:
     void loadModel(const QString &modelPath, const ContextSettings &settings);
     void generateResponse(const QString &prompt, const GenerationSettings &settings);
     void loadWhisperModel(const QString &modelPath);
-    void transcribeAudio(const std::vector<float> &audioData);
+    void transcribeAudio(const std::vector<float> &audioData, const WhisperSettings &settings);
     
 
 private:
- 
+    
+    # Objects 
     QLineEdit       *modelPathEdit;
     QLineEdit       *userInput;
     QTextEdit       *chatDisplay;
     QPushButton     *browseButton;
     QPushButton     *loadButton;
     QPushButton     *sendButton;
+    QPushButton     *uploadButton;
     QPushButton     *clearButton;
     QProgressBar    *progressBar;
     QLabel          *llmStatusLabel;
@@ -739,7 +961,7 @@ private:
     QProgressBar    *whisperProgressBar;
 
  
-    
+    # Variables
     QAudioSource    *audioInput     = nullptr;
     QBuffer         *audioBuffer    = nullptr;
 
@@ -752,19 +974,26 @@ private:
     
     QString         currentResponse;
     QString         systemPrompt;
+    QString         fewShotExamples;
     QString         conversationHistory;
+    QString         lastUserMessage;
 
-    GenerationSettings  generationSettings;
-    ContextSettings     contextSettings;
 
+    # Thread comms.
     QThread         whisperThread;
     QThread         workerThread;
 
     WhisperWorker   *whisperWorker;
     LlamaWorker     *worker;
 
+    # Settings
+    GenerationSettings  generationSettings;
+    ContextSettings     contextSettings;
+
+    WhisperSettings     whisperSettings;
 
     bool isRecording = false;
+    int pdfTruncationLength;
 };
 
 int main(int argc, char *argv[])
