@@ -106,9 +106,25 @@ private:
                                                                 /*threadCount=*/    8,
                                                                 /*batchSize=*/      512
         };
+        static inline const WhisperSettings WHISPER = {
+                                                                /*printRealtime=*/   false,
+                                                                /*printProgress=*/   false,
+                                                                /*printTimestamps=*/ false,
+                                                                /*printSpecial=*/    false,
+                                                                /*translate=*/       false,
+                                                                /*language=*/        "en",
+                                                                /*threads=*/         4,
+                                                                /*offsetMs=*/        0,
+                                                                /*durationMs=*/      0,
+                                                                /*tokenTimestamps=*/ false,
+                                                                /*maxLen=*/          1,
+                                                                /*splitOnWord=*/     true,
+                                                                /*suppressBlank=*/   true
+        };
+
         static constexpr int PDF_TRUNCATION_LENGTH          = 500;  
     };
-    
+        
     struct Styles {
  
         static inline const QString COLOR_GRAY          = "gray";
@@ -283,32 +299,30 @@ private:
         systemPrompt                    = settings.value("generation/systemPrompt",     Defaults::SYSTEM_PROMPT).toString();
         fewShotExamples                 = settings.value("generation/fewShotExamples",  Defaults::FEWSHOT_PROMPT()).toString();
 
-        generationSettings.maxTokens    = settings.value("generation/maxTokens",        generationSettings.maxTokens).toInt();
-        generationSettings.temperature  = settings.value("generation/temperature",      generationSettings.temperature).toDouble();
-        generationSettings.topP         = settings.value("generation/topP",             generationSettings.topP).toDouble();
-        generationSettings.topK         = settings.value("generation/topK",             generationSettings.topK).toInt();
+        generationSettings.maxTokens    = settings.value("generation/maxTokens",        Defaults::GENERATION.maxTokens).toInt();
+        generationSettings.temperature  = settings.value("generation/temperature",      Defaults::GENERATION.temperature).toDouble();
+        generationSettings.topP         = settings.value("generation/topP",             Defaults::GENERATION.topP).toDouble();
+        generationSettings.topK         = settings.value("generation/topK",             Defaults::GENERATION.topK).toInt();
 
-        contextSettings.contextSize     = settings.value("context/size",                contextSettings.contextSize).toInt();
-        contextSettings.threadCount     = settings.value("context/threads",             contextSettings.threadCount).toInt();
-        contextSettings.batchSize       = settings.value("context/batchSize",           contextSettings.batchSize).toInt();
+        contextSettings.contextSize     = settings.value("context/size",                Defaults::CONTEXT.contextSize).toInt();
+        contextSettings.threadCount     = settings.value("context/threads",             Defaults::CONTEXT.threadCount).toInt();
+        contextSettings.batchSize       = settings.value("context/batchSize",           Defaults::CONTEXT.batchSize).toInt();
                 
-        pdfTruncationLength             = settings.value("generation/pdfTruncation",    pdfTruncationLength).toInt();
-
-        // TODO: declare constants
-        whisperSettings.printRealtime   = settings.value("whisper/printRealtime", false).toBool();
-        whisperSettings.printProgress   = settings.value("whisper/printProgress", false).toBool();
-        whisperSettings.printTimestamps = settings.value("whisper/printTimestamps", false).toBool();
-        whisperSettings.printSpecial    = settings.value("whisper/printSpecial", false).toBool();
-        whisperSettings.translate       = settings.value("whisper/translate", false).toBool();
-        whisperSettings.language        = settings.value("whisper/language", "en").toString();
-        whisperSettings.threads         = settings.value("whisper/threads", 4).toInt();
-        whisperSettings.offsetMs        = settings.value("whisper/offsetMs", 0).toInt();
-        whisperSettings.durationMs      = settings.value("whisper/durationMs", 0).toInt();
-        whisperSettings.tokenTimestamps = settings.value("whisper/tokenTimestamps", false).toBool();
-        whisperSettings.maxLen          = settings.value("whisper/maxLen", 1).toInt();
-        whisperSettings.splitOnWord     = settings.value("whisper/splitOnWord", true).toBool();
-        whisperSettings.suppressBlank   = settings.value("whisper/suppressBlank", true).toBool();
-
+        pdfTruncationLength             = settings.value("generation/pdfTruncation",    Defaults::PDF_TRUNCATION_LENGTH).toInt();
+ 
+        whisperSettings.printRealtime   = settings.value("whisper/printRealtime",       Defaults::WHISPER.printRealtime).toBool();
+        whisperSettings.printProgress   = settings.value("whisper/printProgress",       Defaults::WHISPER.printProgress).toBool();
+        whisperSettings.printTimestamps = settings.value("whisper/printTimestamps",     Defaults::WHISPER.printTimestamps).toBool();
+        whisperSettings.printSpecial    = settings.value("whisper/printSpecial",        Defaults::WHISPER.printSpecial).toBool();
+        whisperSettings.translate       = settings.value("whisper/translate",           Defaults::WHISPER.translate).toBool();
+        whisperSettings.language        = settings.value("whisper/language",            Defaults::WHISPER.language).toString();
+        whisperSettings.threads         = settings.value("whisper/threads",             Defaults::WHISPER.threads).toInt();
+        whisperSettings.offsetMs        = settings.value("whisper/offsetMs",            Defaults::WHISPER.offsetMs).toInt();
+        whisperSettings.durationMs      = settings.value("whisper/durationMs",          Defaults::WHISPER.durationMs).toInt();
+        whisperSettings.tokenTimestamps = settings.value("whisper/tokenTimestamps",     Defaults::WHISPER.tokenTimestamps).toBool();
+        whisperSettings.maxLen          = settings.value("whisper/maxLen",              Defaults::WHISPER.maxLen).toInt();
+        whisperSettings.splitOnWord     = settings.value("whisper/splitOnWord",         Defaults::WHISPER.splitOnWord).toBool();
+        whisperSettings.suppressBlank   = settings.value("whisper/suppressBlank",       Defaults::WHISPER.suppressBlank).toBool();
     }
     
     void saveSettings() {
