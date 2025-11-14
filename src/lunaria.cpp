@@ -280,20 +280,21 @@ private:
         savedModelPath                  = settings.value("model/lastPath", "").toString();
         savedWhisperPath                = settings.value("whisper/lastPath", "").toString();
         
-        systemPrompt                    = settings.value("generation/systemPrompt", Defaults::SYSTEM_PROMPT).toString();
-        fewShotExamples                 = settings.value("generation/fewShotExamples", Defaults::FEWSHOT_PROMPT()).toString();
+        systemPrompt                    = settings.value("generation/systemPrompt",     Defaults::SYSTEM_PROMPT).toString();
+        fewShotExamples                 = settings.value("generation/fewShotExamples",  Defaults::FEWSHOT_PROMPT()).toString();
     
-        generationSettings.maxTokens    = settings.value("generation/maxTokens", 512).toInt();
-        generationSettings.temperature  = settings.value("generation/temperature", 0.3).toDouble();
-        generationSettings.topP         = settings.value("generation/topP", 0.95).toDouble();
-        generationSettings.topK         = settings.value("generation/topK", 10).toInt();
-        
-        contextSettings.contextSize     = settings.value("context/size", 2048).toInt();
-        contextSettings.threadCount     = settings.value("context/threads", 8).toInt();
-        contextSettings.batchSize       = settings.value("context/batchSize", 512).toInt();
-        
-        pdfTruncationLength             = settings.value("generation/pdfTruncation", 500).toInt();  
+        generationSettings.maxTokens    = settings.value("generation/maxTokens",        GENERATION.maxTokens).toInt();
+        generationSettings.temperature  = settings.value("generation/temperature",      GENERATION.temperature).toDouble();
+        generationSettings.topP         = settings.value("generation/topP",             GENERATION.topP).toDouble();
+        generationSettings.topK         = settings.value("generation/topK",             GENERATION.topK).toInt();
 
+        contextSettings.contextSize     = settings.value("context/size",                CONTEXT.contextSize).toInt();
+        contextSettings.threadCount     = settings.value("context/threads",             CONTEXT.threadCount).toInt();
+        contextSettings.batchSize       = settings.value("context/batchSize",           CONTEXT.batchSize).toInt();
+                
+        pdfTruncationLength             = settings.value("generation/pdfTruncation",    PDF_TRUNCATION_LENGTH.toInt();  
+
+        // TODO: declare constants
         whisperSettings.printRealtime   = settings.value("whisper/printRealtime", false).toBool();
         whisperSettings.printProgress   = settings.value("whisper/printProgress", false).toBool();
         whisperSettings.printTimestamps = settings.value("whisper/printTimestamps", false).toBool();
