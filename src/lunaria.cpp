@@ -106,7 +106,7 @@ private:
                                                                 /*threadCount=*/    8,
                                                                 /*batchSize=*/      512
         };
-        static inline const WhisperSettings WHISPER = {
+        static inline const WhisperSettings WHISPER         = {
                                                                 /*printRealtime=*/   false,
                                                                 /*printProgress=*/   false,
                                                                 /*printTimestamps=*/ false,
@@ -160,6 +160,65 @@ private:
         static inline const QString HTML_PDF_LOADED     = "<i style='color: cyan;'>PDF loaded: %1 (%2 pages)</i>";
  
     };
+ 
+signals:
+    void loadModel          (const QString &modelPath, const ContextSettings &settings);
+    void generateResponse   (const QString &prompt, const GenerationSettings &settings);
+    void loadWhisperModel   (const QString &modelPath);
+    void transcribeAudio    (const std::vector<float> &audioData, const WhisperSettings &settings);
+    
+private:
+    // Objects 
+    QLineEdit           *modelPathEdit;
+    QLineEdit           *userInput;
+    QTextEdit           *chatDisplay;
+    QPushButton         *browseButton;
+    QPushButton         *loadButton;
+    QPushButton         *sendButton;
+    QPushButton         *uploadButton;
+    QPushButton         *clearButton;
+    QProgressBar        *progressBar;
+    QLabel              *llmStatusLabel;
+    QLineEdit           *whisperPathEdit;
+    QPushButton         *whisperBrowseButton;
+    QPushButton         *whisperLoadButton;
+    QPushButton         *recordButton;
+    QLabel              *whisperStatusLabel;
+    QProgressBar        *whisperProgressBar;
+
+    // Variables
+    QAudioSource        *audioInput     = nullptr;
+    QBuffer             *audioBuffer    = nullptr;
+
+    QElapsedTimer       modelLoadTimer;
+    QElapsedTimer       whisperLoadTimer;
+    QByteArray          audioData;
+
+    QString             savedModelPath;
+    QString             savedWhisperPath;
+    
+    QString             currentResponse;
+    QString             systemPrompt;
+    QString             fewShotExamples;
+    QString             conversationHistory;
+    QString             lastUserMessage;
+
+    // Thread comms.
+    QThread             whisperThread;
+    QThread             workerThread;
+
+    WhisperWorker       *whisperWorker;
+    LlamaWorker         *worker;
+
+    // Settings
+    GenerationSettings  generationSettings;
+    ContextSettings     contextSettings;
+
+    WhisperSettings     whisperSettings;
+
+    bool isRecording = false;
+    int pdfTruncationLength;
+
     
 public:
     ChatWindow(QWidget *parent = nullptr) : QMainWindow(parent)
@@ -957,71 +1016,6 @@ private slots:
         QMessageBox::critical(this, "Whisper Error", error);
     }
 
-
-
-// Initialization signals (Qt macro).
-// Send signals to execute a task
-signals:
-    void loadModel(const QString &modelPath, const ContextSettings &settings);
-    void generateResponse(const QString &prompt, const GenerationSettings &settings);
-    void loadWhisperModel(const QString &modelPath);
-    void transcribeAudio(const std::vector<float> &audioData, const WhisperSettings &settings);
-    
-
-private:
-    
-    // Objects 
-    QLineEdit       *modelPathEdit;
-    QLineEdit       *userInput;
-    QTextEdit       *chatDisplay;
-    QPushButton     *browseButton;
-    QPushButton     *loadButton;
-    QPushButton     *sendButton;
-    QPushButton     *uploadButton;
-    QPushButton     *clearButton;
-    QProgressBar    *progressBar;
-    QLabel          *llmStatusLabel;
-    QLineEdit       *whisperPathEdit;
-    QPushButton     *whisperBrowseButton;
-    QPushButton     *whisperLoadButton;
-    QPushButton     *recordButton;
-    QLabel          *whisperStatusLabel;
-    QProgressBar    *whisperProgressBar;
-
- 
-    // Variables
-    QAudioSource    *audioInput     = nullptr;
-    QBuffer         *audioBuffer    = nullptr;
-
-    QElapsedTimer   modelLoadTimer;
-    QElapsedTimer   whisperLoadTimer;
-    QByteArray      audioData;
-
-    QString         savedModelPath;
-    QString         savedWhisperPath;
-    
-    QString         currentResponse;
-    QString         systemPrompt;
-    QString         fewShotExamples;
-    QString         conversationHistory;
-    QString         lastUserMessage;
-
-
-    // Thread comms.
-    QThread         whisperThread;
-    QThread         workerThread;
-
-    WhisperWorker   *whisperWorker;
-    LlamaWorker     *worker;
-
-    // Settings
-    GenerationSettings  generationSettings;
-    ContextSettings     contextSettings;
-
-    WhisperSettings     whisperSettings;
-
-    bool isRecording = false;
-    int pdfTruncationLength;
 };
 
 int main(int argc, char *argv[])
