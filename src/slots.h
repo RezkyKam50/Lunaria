@@ -1,1 +1,1 @@
-// TODO: Separate private slots
+// TODO: Separate private slots from lunaria.cpp

@@ -17,7 +17,6 @@ SettingsDialog::SettingsDialog(QWidget *parent) : QDialog(parent)
     setMinimumSize(600, 700);
     
     setupUI();
-    loadDefaults();
 }
 
 void SettingsDialog::setupUI()
@@ -318,16 +317,22 @@ void SettingsDialog::setupUI()
  
 void SettingsDialog::loadDefaults()
 {
-    systemPromptEdit->setText("You are a helpful AI assistant.");
-      
-    QString defaultFewShot = 
-        "system\nYou are a helpful AI assistant.\n"
-        "user\nWhat is the capital of France?\n"
-        "assistant\nThe capital of France is Paris.\n"
-        "user\nHow many planets are in our solar system?\n"
-        "assistant\nThere are 8 planets in our solar system.\n";
+    QString systemPrompt = "You are a helpful AI assistant.";
     
-    fewShotExamplesEdit->setText(defaultFewShot);
+    if (systemPromptEdit->toPlainText().isEmpty()) {
+        systemPromptEdit->setText(systemPrompt);
+    }
+
+    if (fewShotExamplesEdit->toPlainText().isEmpty()) {
+        QString defaultFewShot = 
+            "system\n" + systemPrompt + "\n"
+            "user\nWhat is the capital of France?\n"
+            "assistant\nThe capital of France is Paris.\n"
+            "user\nHow many planets are in our solar system?\n"
+            "assistant\nThere are 8 planets in our solar system.\n";
+        
+        fewShotExamplesEdit->setText(defaultFewShot);
+    }
     
     maxTokensSpin->setValue(512);
     contextSizeSpin->setValue(2048);
@@ -354,7 +359,7 @@ void SettingsDialog::loadDefaults()
     whisperSuppressBlankCheck->setChecked(true);
 }
 
-# Getters for LLM
+// Getters for LLM
 void SettingsDialog::setSystemPrompt(const QString &prompt) {
     systemPromptEdit->setText(prompt);
 }
@@ -396,7 +401,7 @@ void SettingsDialog::setPdfTruncationLength(int length) {
 }
 
 
-# Setters for LLM
+// Setters for LLM
 QString SettingsDialog::getSystemPrompt() const {
     return systemPromptEdit->toPlainText();
 }
@@ -438,7 +443,7 @@ int SettingsDialog::getPdfTruncationLength() const {
 }
 
 
-# Getters for Whisper
+// Getters for Whisper
 
 bool SettingsDialog::getWhisperPrintRealtime() const {
     return whisperPrintRealtimeCheck->isChecked();
@@ -493,7 +498,7 @@ bool SettingsDialog::getWhisperSuppressBlank() const {
 }
 
 
-# Setters for Whisper
+// Setters for Whisper
 void SettingsDialog::setWhisperPrintRealtime(bool value) {
     whisperPrintRealtimeCheck->setChecked(value);
 }

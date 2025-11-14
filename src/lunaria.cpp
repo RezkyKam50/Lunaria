@@ -61,8 +61,12 @@
 #include <poppler-page.h>
 
 
-// Interthread comms. were managed with QThread signal and slotting,
-// for ease of development, avoid using legacy MT ops. since it can interrupt with main UI leading to hard-to trace memory leaks.
+    // Interthread comms. were managed with QThread signal and slotting,
+    // for ease of development, avoid using legacy MT ops. since it can interrupt with main UI leading to hard-to trace memory leaks.
+
+    // saved config can be found under .config/Lunaria/Lunaria.conf
+    // resetting to default simply by deleting Lunaria.conf
+    // we'll add a feature for that later for QOL.
 
 class ChatWindow : public QMainWindow
 {
@@ -81,7 +85,16 @@ private:
     };
     
     struct Defaults {
-        static inline const QString SYSTEM_PROMPT           =   "You are a helpful AI assistant.";
+        static inline const QString SYSTEM_PROMPT = "You are a helpful AI assistant.";
+
+        static inline QString FEWSHOT_PROMPT() {     
+        return                                      "system\n" + SYSTEM_PROMPT + "\n"
+                                                    "user\nWhat is the capital of France?\n"
+                                                    "assistant\nThe capital of France is Paris.\n"
+                                                    "user\nHow many planets are in our solar system?\n"
+                                                    "assistant\nThere are 8 planets in our solar system.\n";
+        }
+
         static inline const GenerationSettings GENERATION   = {
                                                                 /*maxTokens=*/      512,
                                                                 /*temperature=*/    0.3,
@@ -267,8 +280,8 @@ private:
         savedModelPath                  = settings.value("model/lastPath", "").toString();
         savedWhisperPath                = settings.value("whisper/lastPath", "").toString();
         
-        systemPrompt                    = settings.value("generation/systemPrompt", "You are a helpful AI assistant.").toString();
-        fewShotExamples                 = settings.value("generation/fewShotExamples", "").toString();  
+        systemPrompt                    = settings.value("generation/systemPrompt", Defaults::SYSTEM_PROMPT).toString();
+        fewShotExamples                 = settings.value("generation/fewShotExamples", Defaults::FEWSHOT_PROMPT()).toString();
     
         generationSettings.maxTokens    = settings.value("generation/maxTokens", 512).toInt();
         generationSettings.temperature  = settings.value("generation/temperature", 0.3).toDouble();
@@ -942,7 +955,7 @@ signals:
 
 private:
     
-    # Objects 
+    // Objects 
     QLineEdit       *modelPathEdit;
     QLineEdit       *userInput;
     QTextEdit       *chatDisplay;
@@ -961,7 +974,7 @@ private:
     QProgressBar    *whisperProgressBar;
 
  
-    # Variables
+    // Variables
     QAudioSource    *audioInput     = nullptr;
     QBuffer         *audioBuffer    = nullptr;
 
@@ -979,14 +992,14 @@ private:
     QString         lastUserMessage;
 
 
-    # Thread comms.
+    // Thread comms.
     QThread         whisperThread;
     QThread         workerThread;
 
     WhisperWorker   *whisperWorker;
     LlamaWorker     *worker;
 
-    # Settings
+    // Settings
     GenerationSettings  generationSettings;
     ContextSettings     contextSettings;
 
