@@ -1,0 +1,23 @@
+TODO's : 
+\
+ Higher Rank: Higher Priority 
+\
+ lunaria.cpp;
+ Replace pointers with smart pointers.
+\
+ llamaworker.cpp and lunaria.cpp;
+ Implement llama_apply_chat_template instead of raw tokens.
+\
+\
+New features;
+ Create power (in watts) graph for CPU/GPU utils.
+ Create temp (in F/C) graph for CPU/GPU temps.
+ Create CUDA profiling (like NVIDIA;s NSIGHT) for CUDA builds.
+ Implement support for diffusion based text gen.
+\
+overall;
+ Create test files.
+\
+
+
+

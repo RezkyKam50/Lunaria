@@ -61,12 +61,13 @@
 #include <poppler-page.h>
 
 
-    // Interthread comms. were managed with QThread signal and slotting,
-    // for ease of development, avoid using legacy MT ops. since it can interrupt with main UI leading to hard-to trace memory leaks.
+    // Thread comms. were managed with QThread signal and slotting, 
+    // for ease of development, avoid using legacy MT ops.
 
     // saved config can be found under .config/Lunaria/Lunaria.conf
     // resetting to default simply by deleting Lunaria.conf
     // we'll add a feature for that later for QOL.
+
 
 class ChatWindow : public QMainWindow
 {
@@ -74,6 +75,7 @@ class ChatWindow : public QMainWindow
 
 private:
     struct Constants {
+
         static constexpr int DEFAULT_WINDOW_WIDTH   = 1200;
         static constexpr int DEFAULT_WINDOW_HEIGHT  = 600;
 
@@ -82,9 +84,11 @@ private:
 
         static constexpr int SAMPLE_RATE            = 16000;
         static constexpr int AUDIO_CHANNELS         = 1;
+
     };
     
     struct Defaults {
+
         static inline const QString SYSTEM_PROMPT = "You are a helpful AI assistant.";
 
         static inline QString FEWSHOT_PROMPT() {     
@@ -95,18 +99,18 @@ private:
                                                     "assistant\nThere are 8 planets in our solar system.\n";
         }
 
-        static inline const GenerationSettings GENERATION   = {
+        static inline const GenerationSettings  GENERATION      = {
                                                                 /*maxTokens=*/      512,
                                                                 /*temperature=*/    0.3,
                                                                 /*topP=*/           0.95,
                                                                 /*topK=*/           10
         };
-        static inline const ContextSettings CONTEXT         = {
+        static inline const ContextSettings     CONTEXT         = {
                                                                 /*contextSize=*/    2048,
                                                                 /*threadCount=*/    8,
                                                                 /*batchSize=*/      512
         };
-        static inline const WhisperSettings WHISPER         = {
+        static inline const WhisperSettings     WHISPER         = {
                                                                 /*printRealtime=*/   false,
                                                                 /*printProgress=*/   false,
                                                                 /*printTimestamps=*/ false,
@@ -122,7 +126,8 @@ private:
                                                                 /*suppressBlank=*/   true
         };
 
-        static constexpr int PDF_TRUNCATION_LENGTH          = 500;  
+        static constexpr int PDF_TRUNCATION_LENGTH              = 500;  
+
     };
         
     struct Styles {
@@ -221,6 +226,7 @@ private:
 
     
 public:
+
     ChatWindow(QWidget *parent = nullptr) : QMainWindow(parent)
 
     // Default settings else modified settings.
