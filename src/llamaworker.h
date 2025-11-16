@@ -3,6 +3,7 @@
 
 #include <QObject>
 #include <QString>
+#include <vector>
 #include "llama.h"
 
 struct GenerationSettings {
@@ -16,7 +17,12 @@ struct ContextSettings {
     int contextSize     = 2048;
     int threadCount     = 8;
     int batchSize       = 512;
-};  
+};
+
+struct ChatMessage {
+    QString role;
+    QString content;
+};
 
 class LlamaWorker : public QObject
 {
@@ -29,6 +35,7 @@ public:
 public slots:
     void loadModel(const QString &modelPath, const ContextSettings &settings);
     void generateResponse(const QString &prompt, const GenerationSettings &settings);
+    void generateResponseWithMessages(const std::vector<ChatMessage> &messages, const GenerationSettings &settings);
     void cleanup();
 
 signals:
@@ -43,6 +50,7 @@ private:
     llama_sampler *sampler;
     
     void updateSampler(const GenerationSettings &settings);
+    QString applyChatTemplate(const std::vector<ChatMessage> &messages, bool add_assistant);
 };
 
 #endif // LLAMAWORKER_H

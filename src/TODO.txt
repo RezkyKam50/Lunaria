@@ -2,11 +2,12 @@ TODO's :
 \
  Higher Rank: Higher Priority 
 \
- lunaria.cpp;
- Replace pointers with smart pointers.
+lunaria.cpp;
+ Replace pointers with smart pointers. 
+ Separate init. structs into separate header files.
 \
- llamaworker.cpp and lunaria.cpp;
- Implement llama_apply_chat_template instead of raw tokens.
+llamaworker.cpp and lunaria.cpp;
+ Implement llama_apply_chat_template instead of raw tokens. [DONE]
 \
 \
 New features;
@@ -15,7 +16,7 @@ New features;
  Create CUDA profiling (like NVIDIA;s NSIGHT) for CUDA builds.
  Implement support for diffusion based text gen.
 \
-overall;
+Overall;
  Create test files.
 \
 

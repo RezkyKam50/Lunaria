@@ -167,11 +167,12 @@ private:
     };
  
 signals:
-    void loadModel          (const QString &modelPath, const ContextSettings &settings);
-    void generateResponse   (const QString &prompt, const GenerationSettings &settings);
-    void loadWhisperModel   (const QString &modelPath);
-    void transcribeAudio    (const std::vector<float> &audioData, const WhisperSettings &settings);
-    
+    void loadModel(const QString &modelPath, const ContextSettings &settings);
+    void generateResponse(const QString &prompt, const GenerationSettings &settings);
+    void generateResponseWithMessages(const std::vector<ChatMessage> &messages, const GenerationSettings &settings);
+    void loadWhisperModel(const QString &modelPath);
+    void transcribeAudio(const std::vector<float> &audioData, const WhisperSettings &settings);
+
 private:
     // Objects 
     QLineEdit           *modelPathEdit;
@@ -204,8 +205,7 @@ private:
     
     QString             currentResponse;
     QString             systemPrompt;
-    QString             fewShotExamples;
-    QString             conversationHistory;
+    QString             fewShotExamples; 
     QString             lastUserMessage;
 
     // Thread comms.
@@ -223,7 +223,7 @@ private:
 
     bool isRecording = false;
     int pdfTruncationLength;
-
+    std::vector<ChatMessage> messageHistory;
     
 public:
 
@@ -258,7 +258,6 @@ public:
         , isRecording           (false)
         , savedModelPath        ("")
         , savedWhisperPath      ("")
-        , conversationHistory   ("")
         , currentResponse       ("")
 
         
@@ -317,15 +316,31 @@ public:
     
     ~ChatWindow() {
         saveSettings();  
-
-        workerThread.quit();
-        workerThread.wait();
-        whisperThread.quit();
-        whisperThread.wait();
-        
+ 
         if (audioInput) {
             audioInput->stop();
             delete audioInput;
+        }
+        if (audioBuffer) {
+            delete audioBuffer;
+        }
+         
+        if (worker) {
+            worker->cleanup();
+        }
+        
+        workerThread.quit();
+        workerThread.wait(1000);  
+        whisperThread.quit();
+        whisperThread.wait(1000);
+         
+        if (workerThread.isRunning()) {
+            workerThread.terminate();
+            workerThread.wait();
+        }
+        if (whisperThread.isRunning()) {
+            whisperThread.terminate();
+            whisperThread.wait();
         }
     }
 
@@ -598,8 +613,9 @@ private:
         connect(clearButton,    &QPushButton::clicked,          this, &ChatWindow::onClearChatClicked);
         connect(userInput,      &QLineEdit::returnPressed,      this, &ChatWindow::onSendClicked);
         
-        connect(this,           &ChatWindow::loadModel,         worker, &LlamaWorker::loadModel);
-        connect(this,           &ChatWindow::generateResponse,  worker, &LlamaWorker::generateResponse);
+        connect(this,           &ChatWindow::loadModel,                     worker, &LlamaWorker::loadModel);
+        connect(this,           &ChatWindow::generateResponse,              worker, &LlamaWorker::generateResponse);
+        connect(this,           &ChatWindow::generateResponseWithMessages,  worker, &LlamaWorker::generateResponseWithMessages);
         
         connect(worker,         &LlamaWorker::modelLoaded,      this, &ChatWindow::onModelLoaded);
         connect(worker,         &LlamaWorker::responseGenerated,this, &ChatWindow::onResponseGenerated);
@@ -630,6 +646,16 @@ private:
     }
     
     void setupAudioInput() {
+        if (audioInput) {
+            audioInput->stop();
+            delete audioInput;
+            audioInput = nullptr;
+        }
+        if (audioBuffer) {
+            delete audioBuffer;
+            audioBuffer = nullptr;
+        }
+        
         QAudioFormat format;
         format.setSampleRate(Constants::SAMPLE_RATE);
         format.setChannelCount(1);
@@ -723,7 +749,7 @@ private slots:
         chatDisplay->append(Styles::HTML_SYSTEM.arg(QString("Model loaded in %1 ms").arg(loadTimeMs)));
         chatDisplay->append(Styles::HTML_LOADING.arg("You can now start chatting.") + "\n");
         
-        conversationHistory.clear();
+        messageHistory.clear();   
     }
 
     void onWhisperModelLoaded() {
@@ -804,29 +830,24 @@ private slots:
         }
         
         int pageCount = doc->pages();   
-        
         QFileInfo fileInfo(fileName);
-          
-        QString pdfContext = QString("\n\n[PDF Content from %1]:\n%2\n").arg(fileInfo.fileName()).arg(extractedText);
          
-        conversationHistory += QString("<|user|>\n%1<|end|>\n"
-                                    "<|assistant|>\nI've loaded the PDF document '%2'. How can I help you with this content?<|end|>\n")
-                                .arg(pdfContext)
-                                .arg(fileInfo.fileName());
-         
+        QString pdfContext = QString("[PDF Content from %1]:\n%2").arg(fileInfo.fileName()).arg(extractedText);
+        messageHistory.push_back({"user", pdfContext});
+        messageHistory.push_back({"assistant", QString("I've loaded the PDF document '%1'. How can I help you with this content?").arg(fileInfo.fileName())});
         
         chatDisplay->append(Styles::HTML_PDF_LOADED.arg(fileInfo.fileName()).arg(pageCount));
         chatDisplay->append(Styles::HTML_INFO.arg(
-            QString("Extracted %1 characters and appended to input.")
+            QString("Extracted %1 characters and added to context.")
             .arg(extractedText.length())
         ));
-         
+        
         chatDisplay->append(Styles::HTML_SYSTEM.arg(
             QString("PDF '%1' has been loaded into the conversation context. The LLM can now reference this content.")
             .arg(fileInfo.fileName())
         ));
     }
-    
+
     void onSendClicked() {
         QString message = userInput->text().trimmed();
         
@@ -842,31 +863,44 @@ private slots:
         sendButton->setEnabled(false);
         uploadButton->setEnabled(false);
         setStatus(llmStatusLabel, "Generating...", Styles::STATUS_LOADING);
-        
-        QString fullPrompt;
-        
-        if (!systemPrompt.isEmpty()) {
-            fullPrompt += QString("<|system|>\n%1<|end|>\n").arg(systemPrompt);
+         
+        if (messageHistory.empty() && !systemPrompt.isEmpty()) {
+            messageHistory.push_back({"system", systemPrompt});
         }
-        
-        if (!fewShotExamples.isEmpty()) {
-            QString updatedExamples = fewShotExamples;
-            updatedExamples.replace("<|im_start|>", "<|");
-            updatedExamples.replace("<|im_end|>", "<|end|>");
-            fullPrompt += updatedExamples;
+         
+        if (messageHistory.size() == 1 && !fewShotExamples.isEmpty()) {
+            QStringList lines = fewShotExamples.split('\n', Qt::SkipEmptyParts);
+            
+            QString currentRole;
+            QString currentContent;
+            
+            for (const QString &line : lines) {
+                QString trimmedLine = line.trimmed();
+                 
+                if (trimmedLine == "system" || trimmedLine == "user" || trimmedLine == "assistant") {
+                    if (!currentRole.isEmpty() && !currentContent.isEmpty()) {
+                        messageHistory.push_back({currentRole, currentContent.trimmed()});
+                    }
+                    currentRole = trimmedLine;
+                    currentContent.clear();
+                } else {
+                    if (!currentContent.isEmpty()) {
+                        currentContent += "\n";
+                    }
+                    currentContent += trimmedLine;
+                }
+            }
+             
+            if (!currentRole.isEmpty() && !currentContent.isEmpty()) {
+                messageHistory.push_back({currentRole, currentContent.trimmed()});
+            }
         }
-        
-        if (!conversationHistory.isEmpty()) {
-            fullPrompt += conversationHistory;
-        }
-        
-        fullPrompt += QString("<|user|>\n%1<|end|>\n").arg(message);
-        fullPrompt += QString("<|assistant|>\n");
+        messageHistory.push_back({"user", message});
         
         chatDisplay->append(Styles::HTML_LLM);
         currentResponse.clear();
-        
-        emit generateResponse(fullPrompt, generationSettings);
+         
+        emit generateResponseWithMessages(messageHistory, generationSettings);
     }
 
     void onPartialResponse(const QString &token) {
@@ -882,10 +916,7 @@ private slots:
     void onResponseGenerated(const QString &response) {
         chatDisplay->append("\n");
          
-        conversationHistory += QString("<|user|>\n%1<|end|>\n"
-                                    "<|assistant|>\n%2<|end|>\n")
-                                .arg(lastUserMessage)
-                                .arg(currentResponse);
+        messageHistory.push_back({"assistant", currentResponse});
         
         userInput->setEnabled(true);
         sendButton->setEnabled(true);
@@ -893,6 +924,7 @@ private slots:
         setStatus(llmStatusLabel, "Ready", Styles::STATUS_READY);
         userInput->setFocus();
     }
+
     
     void onTranscriptionReady(const QString &text) {
         setStatus(whisperStatusLabel, "Ready", Styles::STATUS_READY);
@@ -907,7 +939,7 @@ private slots:
     
     void onClearChatClicked() {
         chatDisplay->clear();
-        conversationHistory.clear();
+        messageHistory.clear();   
         chatDisplay->append(Styles::HTML_LOADING.arg("Chat history cleared. Starting fresh conversation.") + "\n");
     }
     
